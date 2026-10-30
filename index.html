@@ -1,0 +1,2269 @@
+<title>Layers of Zion</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+/* Layout: one centered column: title strip, 16:9 pixel-art game stage with dialog-box overlays, then a controls strip. Committed single dark look: an 8-bit cartridge at dusk. */
+:root {
+  color-scheme: dark;
+  --bg: #120c0a;
+  --panel: #1d1411;
+  --line: #f3e6d6;
+  --dim: #5a4337;
+  --fg: #f3e6d6;
+  --muted: #c2a891;
+  --accent: #e2774a;
+  --gold: #f2c14e;
+  --pixel: 'Press Start 2P', 'Courier New', monospace;
+  --body: 'VT323', 'Courier New', monospace;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--body); font-size: 20px; line-height: 1.25;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 1024px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+h1 { font-family: var(--pixel); font-weight: 400; font-size: clamp(16px, 3vw, 26px); margin: 0; line-height: 1.3; letter-spacing: .02em; }
+h1 span { color: var(--accent); }
+.tag { margin: 0; color: var(--muted); }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #000; border: 4px solid var(--dim); overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(10, 6, 5, .5); }
+.card { background: var(--panel); border: 4px solid var(--line); box-shadow: 6px 6px 0 #000; width: 100%; max-width: 540px; max-height: 100%; overflow: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { margin: 0; font-family: var(--pixel); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); line-height: 1.6; }
+.card h2 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 17px; line-height: 1.45; text-wrap: balance; }
+.card p { margin: 0; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.src { margin: 0; color: var(--muted); font-size: 17px; }
+.nb-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.nb-note { border-left: 4px solid var(--gold); padding-left: 10px; display: flex; flex-direction: column; gap: 2px; }
+.nb-note.missing { border-left-color: var(--dim); color: var(--muted); }
+.nb-note h3 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 10px; line-height: 1.6; color: var(--gold); }
+.rule { margin: 0; padding: 8px 10px; border: 2px dashed var(--gold); color: var(--fg); }
+.placeholder { color: var(--muted); border-left: 4px solid var(--dim); padding-left: 10px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn { font: 400 11px var(--pixel); color: #120c0a; background: var(--gold); border: 0; box-shadow: 4px 4px 0 #000; padding: 11px 14px; cursor: pointer; line-height: 1.3; }
+.btn:hover { background: #ffd56b; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+.btn.ghost { background: var(--panel); color: var(--fg); outline: 2px solid var(--dim); outline-offset: -2px; }
+.btn:focus-visible, .choice:focus-visible, .lvl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.choices { display: grid; gap: 8px; }
+.choice { text-align: left; font: 400 20px var(--body); color: var(--fg); background: #2a1d18; border: 2px solid var(--dim); padding: 6px 12px; cursor: pointer; }
+.choice.wrong { border-color: #d0573b; color: #f0b3a3; }
+.choice.right { border-color: #8fc06a; color: #cfe6bf; }
+.msg { min-height: 1.25em; color: var(--gold); }
+.keys { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+kbd { font: 400 9px var(--pixel); background: #2a1d18; border: 2px solid var(--dim); padding: 2px 5px; color: var(--fg); vertical-align: 2px; }
+.strip { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; justify-content: space-between; color: var(--muted); }
+.strip .group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lvl { font: 400 10px var(--pixel); width: 32px; height: 32px; border: 2px solid var(--dim); background: var(--panel); color: var(--fg); cursor: pointer; }
+.lvl[aria-current="true"] { background: var(--gold); color: #120c0a; border-color: var(--gold); }
+.note { margin: 0; color: var(--muted); max-width: 75ch; }
+.overlay { z-index: 4; }
+/* on-screen controls float over the game on touch screens */
+.touch { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: none; justify-content: space-between; align-items: flex-end;
+  padding: 0 max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px)); pointer-events: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.touch .pad { display: flex; gap: 8px; }
+.touch button, .touch-top button { pointer-events: auto; font: 400 9px var(--pixel); color: var(--fg); background: rgba(18, 12, 10, .45);
+  border: 2px solid rgba(243, 230, 214, .55); touch-action: none; -webkit-user-select: none; user-select: none; }
+.touch button { width: clamp(46px, 11vw, 74px); height: clamp(46px, 11vw, 74px); }
+.touch button[data-key="left"], .touch button[data-key="right"] { font-size: 18px; }
+.touch button.on { background: rgba(242, 193, 78, .8); color: #120c0a; }
+.touch-top { position: absolute; top: 40%; right: max(6px, env(safe-area-inset-right, 0px)); z-index: 2; display: none; flex-direction: column; gap: 6px; pointer-events: none; }
+.touch-top button { width: 50px; height: 30px; }
+.rotate { display: none; margin: 0; color: var(--gold); }
+@media (pointer: coarse) { .touch, .touch-top { display: flex; } body { touch-action: manipulation; } }
+@media (pointer: coarse) and (orientation: portrait) { .rotate { display: block; } }
+@media (pointer: coarse) and (orientation: landscape) {
+  body { padding-block: 0; }
+  header, .strip, .note, .rotate { display: none; }
+  .wrap { max-width: none; gap: 0; }
+  .stage { width: min(100%, calc((100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 16 / 9)); margin-inline: auto; border-width: 0; }
+}
+@media (max-width: 680px) {
+  body { font-size: 18px; }
+  .overlay { padding: 6px; }
+  .card { padding: 10px 12px; gap: 6px; border-width: 3px; }
+  .card h2 { font-size: 12px; }
+  .btn { font-size: 9px; padding: 8px 10px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Layers of <span>Zion</span></h1>
+    <p class="tag">Climb through 250 million years of rock, then carve the canyon.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="512" height="288" aria-label="Game screen"></canvas>
+    <div class="touch" id="touch" aria-hidden="true">
+      <div class="pad">
+        <button data-key="left">&#9664;</button>
+        <button data-key="right">&#9654;</button>
+      </div>
+      <div class="pad">
+        <button data-key="hammer">HAMMER</button>
+        <button data-key="jump">JUMP</button>
+      </div>
+    </div>
+    <div class="touch-top" aria-hidden="true">
+      <button data-cmd="pause">II</button>
+      <button data-cmd="notebook">NOTES</button>
+      <button data-cmd="sound" id="snd-touch">SND</button>
+    </div>
+    <div class="overlay" id="overlay" hidden></div>
+  </div>
+  <p class="rotate">Turn your phone sideways for a bigger screen.</p>
+
+  <div class="strip">
+    <div class="group">Move <kbd>&larr;</kbd><kbd>&rarr;</kbd> Jump <kbd>SPACE</kbd> Hammer <kbd>X</kbd> Dig <kbd>&darr;</kbd> Notebook <kbd>N</kbd> Sound <kbd>M</kbd> Pause <kbd>P</kbd></div>
+    <div class="group" id="levels" aria-label="Jump to level">Levels</div>
+    <div class="group"><button class="btn ghost" id="music" type="button">MUSIC ON</button><button class="btn ghost" id="sound" type="button">SOUND ON</button><button class="btn ghost" id="notebook" type="button">NOTEBOOK</button><button class="btn ghost" id="restart" type="button">RESTART</button></div>
+  </div>
+  <p class="note">Field notes come from Ryan Rushton's Geology 101 research. Quiz questions are drafts. Formation ages are approximate.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ============================================================
+// FIELD NOTES: 3 per level, filled in from research.
+// Leave text empty to show the "not written yet" placeholder.
+// ============================================================
+// Text comes from Ryan Rushton's research notes (Geology 101, Oct 2026).
+const SRC = {
+  1: 'Morris, Ritter & Laycock (2010), Geology Unfolded',
+  2: 'Chidsey (2026), Geology of the Intermountain West',
+  3: 'National Park Service, NPS Geodiversity Atlas: Zion',
+  4: 'National Park Service, Rock Layers: Zion',
+};
+const FIELD_NOTES = {
+  1: [
+    { title: 'Thin layers', src: 3, text: 'The Moenkopi Formation consists of thin layers of mudstone, sandstone, and siltstone.' },
+    { title: 'Ripple marks', src: 3, text: 'Layers have ripple marks, showing evidence of water and waves. Limestone in the Moenkopi is evidence of higher sea levels.' },
+    { title: 'Reptile footprints', src: 3, text: 'Footprints of prehistoric reptiles are preserved in this layer.' },
+  ],
+  2: [
+    { title: 'Colors from volcanoes', src: 3, text: 'The Chinle is made of mudstone, siltstone, sandstone, and conglomerate. Its mudstone has bright colors, an indicator of volcanic ash. The ash came from volcanoes southwest of the Colorado Plateau and was carried by rivers to where we see the Chinle today.' },
+    { title: 'Popcorn mud', src: 3, text: 'Bentonite muds in the Chinle have a "popcorn" texture, because they expand when wet and shrink when dry.' },
+    { title: 'Petrified wood and early dinosaurs', src: 3, text: 'The Chinle Formation is well known for its petrified wood. Early dinosaur fossils can also be found here.' },
+  ],
+  3: [
+    { title: 'The red hillside', src: 3, text: 'The Moenave consists of reddish-brown sandstone, siltstone, and varicolored mudstone. In Zion it is seen as the steep red hillside leading up to the cliffs.' },
+    { title: 'Rivers and lakes', src: 3, text: 'The Kayenta consists of reddish-brown and pink sandstone, with mudstone left behind by rivers and lakes.' },
+    { title: 'Dinosaur tracks', src: 3, text: 'Large dinosaur tracks can be found in both the Moenave and the Kayenta.' },
+  ],
+  4: [
+    { title: 'A desert like the Sahara', src: 1, text: 'The Navajo Sandstone was deposited in an ancient desert, like the Sahara. During its formation, North America was barely north of the equator. It formed in one of the largest sand deserts in the history of the world.' },
+    { title: 'Crossbedding', src: 1, text: 'The area was covered by dunes of quartz sand. Wind carried the sand and created crossbedding: layers of sediment deposited at an angle. The layers dip in the direction the wind was blowing.' },
+    { title: 'Hard to date', src: 2, text: 'It is rare to find volcanic ash or fossils in the Navajo Sandstone, which makes it hard to determine precise dates.' },
+  ],
+  5: [
+    { title: 'After the dunes', src: 3, text: 'The Temple Cap consists of sandstone with mudstone. It shows the remains of the coastal environment that followed the dunes of the Navajo desert.' },
+    { title: 'The Sundance Sea', src: 3, text: 'The Sundance Sea left rock types from mudstone and sandstone to limestone. The Carmel Formation consists of limestone, mudstone, sandstone, and gypsum.' },
+    { title: 'Clams and snails', src: 3, text: 'Limestone in the Carmel preserved marine fossils, including ancient clams and snails. Only the lower part of the Carmel is still in Zion. The rest has eroded away over time.' },
+  ],
+  6: [
+    { title: 'The power of running water', src: 1, text: 'Zion shows the power of erosion from running water, cutting through rock and uncovering history through the layers of rock we see.' },
+    { title: 'Cutting down', src: 2, text: 'The rate of erosion is approximately 1,300 feet in the past 1 million years.' },
+    { title: 'Painted walls', src: 2, text: 'Erosion uncovers sandstone that, once uniform in color, has gone from red to pink, yellow, and even white.' },
+  ],
+};
+const FUN_FACTS = 'Zion was designated a national park in 1919. It covers over 146,000 acres, and its elevation ranges from 3,666 to 8,736 feet.';
+
+// QUIZ GATES: one question per level, each built from one of that level's field notes (note = index 0-2).
+// Wrong choices are facts from other layers in the research, so every option comes from the notes.
+const QUIZ = {
+  1: { note: 1, question: 'What do the ripple marks in the Moenkopi show?', choices: ['Wind blew quartz sand into dunes', 'Water and waves moved the sediment', 'Volcanic ash settled out of rivers', 'Large dinosaurs walked through mud'], answer: 1 },
+  2: { note: 0, question: 'What gives Chinle mudstone its bright colors?', choices: ['Limestone from higher sea levels', 'Gypsum left by the Sundance Sea', 'Volcanic ash carried in by rivers', 'Wind-blown quartz sand'], answer: 2 },
+  3: { note: 2, question: 'What can be found in both the Moenave and the Kayenta?', choices: ['Large dinosaur tracks', 'Ancient clams and snails', 'Bentonite "popcorn" mud', 'Limestone with marine fossils'], answer: 0 },
+  4: { note: 1, question: 'What is crossbedding?', choices: ['Thin layers of mudstone, sandstone, and siltstone', 'Mud that expands when wet and shrinks when dry', 'Rock that has faded from red to white', 'Layers of sediment deposited at an angle'], answer: 3 },
+  5: { note: 2, question: "Which fossils did the Carmel Formation's limestone preserve?", choices: ['Large dinosaur tracks', 'Ancient clams and snails', 'Early dinosaur bones', 'Reptile footprints'], answer: 1 },
+  6: { note: 1, question: 'About how far has erosion cut down in the past 1 million years?', choices: ['About 13 feet', 'About 130 feet', 'About 1,300 feet', 'About 13,000 feet'], answer: 2 },
+};
+
+// ============================================================
+// LEVEL PIECES. Land chunks are 10 rows tall; sea chunks are 22 rows
+// tall and sink below the ground into a basin.
+// # ground  = ledge  B breakable boulder  x crumbling ledge  w water
+// N field note  E animal  R clam  p popcorn mud  C checkpoint
+// S level hint sign  K hammer sign  G exit sign
+// o crystal  Q crystal block  P power-up block  h hidden 1-UP block
+// M sliding platform  V lift platform  d cracked ground (dig with the hammer)
+// J dig hint sign  Z where you climb back out of the bonus cave
+// ============================================================
+function ch(w, rows = {}) {
+  const out = [];
+  for (let r = 0; r < 10; r++) out.push(rows[r] ?? (r >= 8 ? '#'.repeat(w) : '.'.repeat(w)));
+  return out;
+}
+function sea(w, rows = {}) {
+  const out = [];
+  for (let r = 0; r < 22; r++) out.push(rows[r] ?? (r < 8 ? '.'.repeat(w) : r < 20 ? 'w'.repeat(w) : '#'.repeat(w)));
+  return out;
+}
+const CHUNKS = {
+  start:       ch(10, { 7: '..S.......' }),
+  flat:        ch(8),
+  gap:         ch(12, { 8: '####....####', 9: '####....####' }),
+  steps:       ch(14, { 5: '..........====', 7: '......===.....' }),
+  hill:        ch(12, { 6: '....####....', 7: '..########..' }),
+  enemy:       ch(14, { 7: '........E.....' }),
+  pitPlat:     ch(16, { 6: '......====......', 8: '###..........###', 9: '###..........###' }),
+  noteHigh:    ch(12, { 3: '.....N......', 5: '....====....' }),
+  noteBoulder: ch(12, { 0: '......B.....', 1: '......B.....', 2: '......B.....', 3: '......B.....', 4: '......B.....', 5: '......B.....', 6: '......B.....', 7: '..K...B..N..' }),
+  notePit:     ch(14, { 5: '......N.......', 8: '#####....#####', 9: '#####....#####' }),
+  checkpoint:  ch(8,  { 7: '...C....' }),
+  crumble:     ch(14, { 7: '....xx..xx....', 8: '###........###', 9: '###........###' }),
+  refuge:      ch(12, { 5: '...======...' }),
+  dune:        ch(16, { 5: '......####......', 6: '....########....', 7: '..############..' }),
+  // an alcove overhang: shelter from rockfall underneath, crystals on top (climb up from the step)
+  narrows:     ch(16, { 3: '....oo..oo......', 4: '...#########....', 6: '.##.............', 7: '.##.............' }),
+  pillars:     ch(16, { 3: '....o...o...o...', 5: '..........##....', 6: '......##..##....', 7: '..##..##..##....', 8: '####..##..##..##', 9: '####..##..##..##' }),
+  zigzag:      ch(18, { 2: '........oo........', 4: '........==........', 6: '...==........==...', 8: '##..............##', 9: '##..............##' }),
+  moverH:      ch(18, { 5: '.....o...o...o....', 7: '...M..............', 8: '###............###', 9: '###............###' }),
+  moverV:      ch(14, { 1: '..........o.o.', 3: '........######', 4: '........######', 5: '........######', 6: '........######', 7: '....V...######' }),
+  blocks:      ch(14, { 4: '....QPQ.......' }),
+  blocks2:     ch(16, { 2: '.........ooo....', 4: '...Q.....QQQ....' }),
+  secret:      ch(12, { 4: '.....h......', 7: '..o.o.o.o...' }),
+  stairs:      ch(16, { 2: '.......oo.......', 4: '......####......', 5: '.....######.....', 6: '....########....', 7: '...##########...' }),
+  gapCoins:    ch(12, { 4: '.....oo.....', 5: '....o..o....', 8: '####....####', 9: '####....####' }),
+  enemy2:      ch(18, { 6: '.......====.......', 7: '...E..........E...' }),
+  seaIn:       sea(10),
+  seaFish:     sea(14, { 19: 'wwwwwwEwwwwwww' }),
+  seaFish2:    sea(14, { 19: 'wwwRwwwwEwwwww' }),
+  popcorn:     ch(14, { 7: '..pp.....pp...' }),
+  arena:       ch(32, { 4: '......1.....2.....3.....4.......' }),
+  digsite:     ch(20, { 7: '..J.............Z...', 8: '####dd##############' }),
+  seaRocks:    sea(16, { 17: 'wwww###wwwwwwwww', 18: 'www#####wwwwwwww', 19: 'www#####wwwwRw##' }),
+  seaNote:     sea(14, { 15: 'ww######wwwwww', 18: 'wwwwwNwwwwwwww', 19: 'wwRwwwwwwwwRww' }),
+  seaCheck:    sea(10, { 19: 'wwwwCwwwww' }),
+  seaArch:     sea(16, { 8: 'wwwwww####wwwwww', 9: 'wwwwww####wwwwww', 10: 'wwwwww####wwwwww', 11: 'wwwwww####wwwwww', 12: 'wwwwww####wwwwww', 13: 'wwwwww####wwwwww', 19: 'wwwwwwwwwwwwwwRw' }),
+  seaOut:      sea(10, { 15: 'wwwwww####', 16: 'wwwww#####', 17: 'wwww######', 18: 'www#######', 19: 'ww########' }),
+  end:         ch(14, { 7: '..........G...' }),
+  wall:        ch(2,  { 0: '##', 1: '##', 2: '##', 3: '##', 4: '##', 5: '##', 6: '##', 7: '##' }),
+};
+
+const LEVELS = [
+  { name: 'Tidal Flats', formation: 'Moenkopi Formation', age: 'About 250 to 240 million years ago (Triassic)',
+    env: 'Shallow sea and muddy coastal flats', mech: 'tide', animals: ['reptile'], platform: 'ledge', ridge: 'flat', bedding: 'thin', tracks: 'small',
+    hint: 'Tides rise and fall in the channels. Look for ripple marks and reptile footprints in the mud. Stomp the reptiles or jump over them.',
+    c: { sky: ['#4f9fb0', '#7fbcc1', '#b7d4c6', '#ecd9b2'], far: '#a5806a', mid: '#8a5c45', rock: '#8d4b36', dark: '#5f2f21', line: '#b97a5c', top: '#b0915f', topDark: '#7d6440', liquid: '#2f8796', liquidTop: '#9fe0dc' },
+    chunks: ['start', 'flat', 'blocks', 'gapCoins', 'enemy', 'noteHigh', 'pillars', 'checkpoint', 'digsite', 'secret', 'enemy2', 'noteBoulder', 'zigzag', 'stairs', 'checkpoint', 'notePit', 'moverH', 'enemy', 'blocks2', 'end'] },
+  { name: 'River of Logs', formation: 'Chinle Formation', age: 'About 225 to 210 million years ago (Triassic)',
+    env: 'Rivers and floodplains, colored by volcanic ash', mech: 'flood', animals: ['coelo'], platform: 'log', ridge: 'hills', bedding: 'banded',
+    hint: 'Flash floods come fast. Popcorn mud swells up when it gets wet, so climb onto it or the logs. Watch for early dinosaurs.',
+    c: { bands: ['#7a6582', '#a991a8', '#d8cfd8', '#8e5a6a', '#b9a6c4', '#6d7c8c'], sky: ['#6f9f7a', '#9cc19a', '#cddbb0', '#efe2c0'], far: '#958ca4', mid: '#6f627c', rock: '#7a6582', dark: '#4f405a', line: '#a991a8', top: '#5e8a3e', topDark: '#3e6328', liquid: '#7d5c37', liquidTop: '#c8a77a' },
+    chunks: ['start', 'popcorn', 'blocks', 'gapCoins', 'enemy', 'noteHigh', 'refuge', 'pillars', 'checkpoint', 'digsite', 'moverV', 'enemy2', 'refuge', 'noteBoulder', 'refuge', 'zigzag', 'checkpoint', 'notePit', 'popcorn', 'secret', 'refuge', 'enemy', 'refuge', 'end'] },
+  { name: 'Track Country', formation: 'Moenave and Kayenta Formations', age: 'About 210 to 185 million years ago (Triassic to Jurassic)',
+    env: 'Rivers, lakes, and mudflats', mech: 'crumble', animals: ['dilo'], platform: 'track', tracks: 'big', ridge: 'mesa', bedding: 'flat',
+    hint: 'Cracked mud ledges crumble after you land, so keep moving. Use the dinosaur tracks as stepping stones, and watch for the big dinosaurs that made them.',
+    c: { sky: ['#5f97a8', '#8db8bd', '#c9cfb2', '#f0cfa4'], far: '#a8644c', mid: '#88452f', rock: '#8c3a2c', dark: '#5a2018', line: '#b45b45', top: '#9a6a3e', topDark: '#6c4826', liquid: '#3f7a5c', liquidTop: '#a9d4a8' },
+    chunks: ['start', 'flat', 'blocks', 'crumble', 'enemy', 'noteHigh', 'pillars', 'crumble', 'checkpoint', 'digsite', 'stairs', 'noteBoulder', 'enemy2', 'moverH', 'crumble', 'secret', 'checkpoint', 'notePit', 'zigzag', 'crumble', 'enemy', 'end'] },
+  { name: 'Sea of Sand', formation: 'Navajo Sandstone', age: 'About 185 to 180 million years ago (Jurassic)',
+    env: "One of the largest sand deserts in Earth's history", mech: 'wind', animals: ['devil'], platform: 'ledge', ridge: 'dunes', bedding: 'cross', bleach: true,
+    hint: 'Fossils are rare in this desert, but dust devils are not. Sandstorms blow in from the east and push you back. Hold forward, or wait behind a dune.',
+    c: { sky: ['#e39a55', '#efb873', '#f6d197', '#f9e5bf'], far: '#e3b083', mid: '#d29360', rock: '#e2ad80', dark: '#b97d52', line: '#c98a5e', top: '#f3dfbf', topDark: '#e0c296', liquid: null },
+    chunks: ['start', 'dune', 'blocks', 'gapCoins', 'enemy', 'dune', 'noteHigh', 'pillars', 'checkpoint', 'digsite', 'dune', 'noteBoulder', 'enemy2', 'zigzag', 'secret', 'dune', 'checkpoint', 'notePit', 'moverH', 'dune', 'enemy', 'end'] },
+  { name: 'Return of the Sea', formation: 'Temple Cap and Carmel Formations', age: 'About 175 to 165 million years ago (Jurassic)',
+    env: 'Coastal desert, then the shallow Sundance Sea', mech: 'sea', animals: ['snail'], platform: 'ledge', ridge: 'dunes', bedding: 'cross',
+    hint: 'The Sundance Sea has flooded the dunes. Dive in and tap jump to swim. Clams snap when they open, and snails crawl along the sea floor.',
+    c: { sky: ['#4f8fb4', '#7db4cc', '#acd0d8', '#dcecec'], far: '#c4ad8a', mid: '#a88f6c', rock: '#b5a184', dark: '#7f6d55', line: '#d4c3a2', top: '#e4d7b8', topDark: '#c2b18c', liquid: null, water: ['#2f78a8', '#22608f', '#184a74', '#103656'], waterTop: '#9fd4ee' },
+    chunks: ['start', 'blocks', 'dune', 'gapCoins', 'noteHigh', 'stairs', 'checkpoint', 'digsite', 'seaIn', 'seaFish', 'seaRocks', 'seaNote', 'seaCheck', 'seaArch', 'seaFish2', 'seaRocks', 'seaFish', 'seaOut', 'flat', 'checkpoint', 'secret', 'pillars', 'noteBoulder', 'zigzag', 'end'] },
+  { name: 'Carving the Canyon', formation: 'Erosion by running water', age: 'The past 1 million years to today',
+    env: 'Running water cuts down through every layer', mech: 'rockfall', animals: ['bighorn', 'snake'], platform: 'ledge', ridge: 'canyon', bedding: 'cross',
+    hint: 'Rocks fall from the cliffs. Watch for warning marks and shelter under overhangs. Bighorn sheep charge.',
+    c: { sky: ['#3f73b4', '#6a98cc', '#b5bcc2', '#f3c99c'], far: '#d08055', mid: '#b5643c', farTop: '#e9d6bc', midTop: '#dcb08a', rock: '#d4875c', dark: '#9a5233', line: '#e8a77d', top: '#6f9a4a', topDark: '#4b7030', liquid: '#3a7a74', liquidTop: '#a7d9cf' },
+    chunks: ['start', 'flat', 'blocks', 'gapCoins', 'enemy', 'noteHigh', 'stairs', 'checkpoint', 'digsite', 'narrows', 'pillars', 'noteBoulder', 'enemy2', 'moverV', 'checkpoint', 'secret', 'narrows', 'notePit', 'zigzag', 'enemy', 'blocks2', 'end'] },
+  { name: 'The Strata Golem', formation: 'Every layer at once', age: 'All 250 million years', boss: true,
+    env: 'The canyon floor, where running water wears every layer down', mech: 'boss', animals: [], platform: 'ledge', ridge: 'canyon', bedding: 'cross',
+    hint: 'Every layer you climbed has piled up into one angry rock golem. Read each question, then jump up and bump the block with the right letter (A to D) to erode a layer off the golem. Wrong answers make it stomp, and touching it hurts.',
+    c: { sky: ['#2c2b54', '#4a3f6e', '#8a5f7a', '#d98a6a'], far: '#7a4a3a', mid: '#5e3426', farTop: '#b89a8a', midTop: '#9a7060', rock: '#9a5233', dark: '#6a3420', line: '#c27a52', top: '#5a7a3a', topDark: '#3e5a28', liquid: null },
+    chunks: ['arena'] },
+];
+
+// ============================================================
+// PIXEL ART. Each sprite is rows of palette letters; '.' is transparent.
+// ============================================================
+const HERO_PAL = { H: '#7a5230', h: '#2e1d10', S: '#e3a679', s: '#b5754a', E: '#1c1410', J: '#8a5427', j: '#5e3519', W: '#e8d9b0', b: '#3e2a18', P: '#b59a6a', B: '#33241a' };
+const HERO_TOP = [
+  '....HHHH....',
+  '...HHHHHH...',
+  '...hhhhhh...',
+  '.HHHHHHHHHH.',
+  '...SSSSES...',
+  '...SSSSSSs..',
+  '....sSSs....',
+  '..JJWWWJJ...',
+  '.JJJbWWJJJ..',
+  '.SJJJbWJJS..',
+  '.SjJJJbJjS..',
+  '...JJJJJ....',
+];
+const HERO_LEGS = {
+  stand: ['...PPPPP....', '...PP.PP....', '...PP.PP....', '..BBB.BBB...'],
+  run1:  ['...PPPPP....', '..PP...PP...', '.PP.....PP..', '.BB.....BB..'],
+  run2:  ['...PPPPP....', '....PPP.....', '....PPP.....', '....BBB.....'],
+  jump:  ['...PPPPP....', '..PP..PP....', '.BB....PP...', '........BB..'],
+};
+const HAMMER_UP = ['.GGG', '.GGG', '..w.', '..w.', '..w.'];
+const HAMMER_DOWN = ['.....', 'GG...', 'GGwww', 'GG...'];
+
+const ANIMALS = {
+  reptile: { name: 'track-making reptile', speed: 28, pal: { R: '#9a6a3a', r: '#5e3f20', Y: '#d9b98a', E: '#1c1410' }, frames: [[
+    '...........rrr..',
+    '..........rRRERr',
+    'rrr.....RRRRRRR.',
+    '..rrRRRRRRRRRR..',
+    '....RYYYYYYYR...',
+    '....r.r...r.r...',
+    '...rr.....rr....',
+  ], [
+    '...........rrr..',
+    '..........rRRERr',
+    'rrr.....RRRRRRR.',
+    '..rrRRRRRRRRRR..',
+    '....RYYYYYYYR...',
+    '.....r.r...r.r..',
+    '.....rr.....rr..',
+  ]] },
+  coelo: { name: 'early dinosaur', speed: 46, pal: { O: '#7a8a4a', o: '#4c5a28', Y: '#d0c890', E: '#1c1410' }, frames: [[
+    '........OOO.',
+    '........OEOO',
+    '.......OOO..',
+    'OO...OOOO...',
+    '.OOOOOOOOo..',
+    '...OOYYOo...',
+    '....o..o....',
+    '...oo.oo....',
+  ], [
+    '........OOO.',
+    '........OEOO',
+    '.......OOO..',
+    'OO...OOOO...',
+    '.OOOOOOOOo..',
+    '...OOYYOo...',
+    '....o.o.....',
+    '....oo.o....',
+  ]] },
+  snail: { name: 'sea snail', speed: 12, pal: { S: '#c9a26a', s: '#8a6438', B: '#b9b0a0', k: '#3a2a1e' }, frames: [[
+    '...SSSS.....',
+    '..SsssSS..k.',
+    '.SsSSssS..k.',
+    '.SsSsSsS.BB.',
+    '.SssSsSSBBB.',
+    'BBBBBBBBBBBB',
+  ], [
+    '...SSSS.....',
+    '..SsssSS...k',
+    '.SsSSssS...k',
+    '.SsSsSsS.BB.',
+    '.SssSsSSBBB.',
+    '.BBBBBBBBBBB',
+  ]] },
+  devil: { name: 'dust devil', speed: 38, pal: {}, frames: [['.'], ['.']] },
+  temno: { name: 'temnospondyl', speed: 26, pal: { G: '#6d7a3e', g: '#46521f', Y: '#c2b872', W: '#efe8c8', E: '#1c1410' }, frames: [[
+    '................',
+    '........gggggg..',
+    '..ggGGGGGGGGWEG.',
+    'gGGGGGGGGGGGGGGG',
+    '.GGYYYYYYYYYYYG.',
+    '..g.g.....g.g...',
+    '.gg.......gg....',
+  ], [
+    '................',
+    '........gggggg..',
+    '..ggGGGGGGGGWEG.',
+    'gGGGGGGGGGGGGGGG',
+    '.GGYYYYYYYYYYYG.',
+    '...g.g.....g.g..',
+    '....gg......gg..',
+  ]] },
+  phyto: { name: 'phytosaur', speed: 24, pal: { G: '#5a6544', g: '#39412a', Y: '#a9a879', W: '#efe8c8', E: '#1c1410' }, frames: [[
+    '......ggggg.........',
+    '...GGGGGGGGGgEg.....',
+    'gGGGGGGGGGGGGGGGGGGG',
+    '..GYYYYYYYYYGGWGWGW.',
+    '..g.g......g.g......',
+    '.gg.......gg........',
+  ], [
+    '......ggggg.........',
+    '...GGGGGGGGGgEg.....',
+    'gGGGGGGGGGGGGGGGGGGG',
+    '..GYYYYYYYYYGGWGWGW.',
+    '...g.g......g.g.....',
+    '....gg.......gg.....',
+  ]] },
+  dilo: { name: 'Dilophosaurus', speed: 36, pal: { G: '#6f7d3c', g: '#47511f', Y: '#c8c27a', R: '#c4422c', W: '#efe8c8', E: '#1c1410' }, frames: [[
+    '...........R.R..',
+    '..........RRRR..',
+    '.........GGGGGG.',
+    '.........GGEGGGG',
+    '.........GGGGWW.',
+    '........GGGG....',
+    '.......GGGG.....',
+    'GG....GGGGGg....',
+    '.GGGGGGGGGGg....',
+    '...GGYYYYGG.....',
+    '....GGGGGG......',
+    '....gg..gg......',
+    '....g...g.......',
+    '...gg...gg......',
+  ], [
+    '...........R.R..',
+    '..........RRRR..',
+    '.........GGGGGG.',
+    '.........GGEGGGG',
+    '.........GGGGWW.',
+    '........GGGG....',
+    '.......GGGG.....',
+    'GG....GGGGGg....',
+    '.GGGGGGGGGGg....',
+    '...GGYYYYGG.....',
+    '....GGGGGG......',
+    '.....gg.g.......',
+    '.....g..g.......',
+    '....gg.gg.......',
+  ]] },
+  segi: { name: 'Segisaurus', speed: 44, pal: { O: '#c97d3c', o: '#8a4f22', Y: '#efcf94', E: '#1c1410' }, frames: [[
+    '........OOO.',
+    '........OEOO',
+    '.......OOO..',
+    'OO...OOOO...',
+    '.OOOOOOOOo..',
+    '...OOYYOo...',
+    '....o..o....',
+    '...oo.oo....',
+  ], [
+    '........OOO.',
+    '........OEOO',
+    '.......OOO..',
+    'OO...OOOO...',
+    '.OOOOOOOOo..',
+    '...OOYYOo...',
+    '....o.o.....',
+    '....oo.o....',
+  ]] },
+  scorp: { name: 'arachnid', speed: 22, pal: { k: '#3d2418', K: '#6b3c22' }, frames: [[
+    '..kk..........',
+    '.k..k.........',
+    '.k...k........',
+    '..kkkkkkkkk.KK',
+    '...kkkkkkkkKK.',
+    '....k.k.k.k...',
+    '...k.k.k.k....',
+  ], [
+    '..kk..........',
+    '.k..k.........',
+    '.k...k........',
+    '..kkkkkkkkk.KK',
+    '...kkkkkkkkKK.',
+    '...k.k.k.k....',
+    '....k.k.k.k...',
+  ]] },
+  fish: { name: 'fish', speed: 30, pal: { B: '#8fa3b0', b: '#56707f', L: '#d8e4ea', E: '#1c1410' }, frames: [[
+    '....BBBBB...',
+    'b..BBBBBBBB.',
+    'bbBBBBBBBEBB',
+    'bbBBLLLLLBB.',
+    'b..BBBBBBB..',
+    '....BBB.....',
+  ], [
+    '....BBBBB...',
+    '...BBBBBBBB.',
+    'bbBBBBBBBEBB',
+    'bbBBLLLLLBB.',
+    '...BBBBBBB..',
+    '....BBB.....',
+  ]] },
+  bighorn: { name: 'bighorn sheep', speed: 52, pal: { H: '#8a6d4a', T: '#b08a5a', t: '#6e5436', W: '#eadcc0', E: '#1c1410', k: '#2a1d14' }, frames: [[
+    '..........HHH...',
+    '.........H..HH..',
+    '.........HTTH...',
+    '........TTTETT..',
+    '........TTTTTT..',
+    '.TTTTTTTTTTT....',
+    'TTTTTTTTTTTT....',
+    'TTWWWWWWWTTT....',
+    '.TTTTTTTTTT.....',
+    '.t.t.....t.t....',
+    '.t.t.....t.t....',
+    '.k.k.....k.k....',
+  ], [
+    '..........HHH...',
+    '.........H..HH..',
+    '.........HTTH...',
+    '........TTTETT..',
+    '........TTTTTT..',
+    '.TTTTTTTTTTT....',
+    'TTTTTTTTTTTT....',
+    'TTWWWWWWWTTT....',
+    '.TTTTTTTTTT.....',
+    '..t.t...t.t.....',
+    '..t..t.t..t.....',
+    '..k..k.k..k.....',
+  ]] },
+  snake: { name: 'rattlesnake', speed: 18, pal: { S: '#b8975e', s: '#6d5530', E: '#1c1410', R: '#e8d9b0' }, frames: [[
+    '............SS..',
+    '...........SSES.',
+    'R...SSSSSSSSS...',
+    'RsSSSsSSsSSs....',
+    '..SSSSSS........',
+  ], [
+    '............SS..',
+    '...........SSES.',
+    '....SSSSSSSSS...',
+    'RRsSSSsSSsSSs...',
+    '...SSSSSS.......',
+  ]] },
+};
+const NOTE_ROWS = ['.CCCCCCC.', 'gCCCCCCCC', 'gCllllCCC', 'gCCCCCCCC', 'gCllllllC', 'gCCCCCCCC', 'gClllllCC', 'gCCCCCCCC', 'gCCCCCCrC', '.......r.'];
+const NOTE_PAL = { C: '#f4ead6', g: '#4f7a45', l: '#9c8a74', r: '#c4422c' };
+const ROCK_ROWS = ['..rrrr..', '.rRRRRr.', 'rRRRRRrr', 'rRRrRRRr', 'rRRRRRrr', 'rrRRRrr.', '.rrrrr..'];
+const ROCK_PAL = { R: '#b07656', r: '#7a4a32' };
+const CLAM_ROWS = [[
+  '............',
+  '...CCCCCC...',
+  '.CCcCCcCCC..',
+  'CCcCCcCCcCCC',
+  'cccccccccccc',
+  '.CCcCCcCCCC.',
+  '...CCCCCC...',
+], [
+  '..CCCCCCC...',
+  '.CcCCcCCcC..',
+  'CCCCCCCCCC..',
+  '...PPPPPP...',
+  'CCCCCCCCCCCC',
+  '.CCcCCcCCCC.',
+  '...CCCCCC...',
+]];
+const CRYSTAL_ROWS = ['...w...', '..wLw..', '.wLLLw.', '.wLLDw.', '.wLDDw.', '.wLDDw.', '..wDw..', '...w...'];
+const CANTEEN_ROWS = ['....bb....', '...bccb...', '..GGGGGG..', '.GGLGGGGG.', '.GLGGGGGG.', '.GGGGGGGG.', '.GGGGGGGG.', '..GGGGGG..', '...GGGG...'];
+const HARDHAT_ROWS = ['....YYYY....', '..YYYYYYYY..', '.YYwwYYYYYY.', '.YwYYYYYGGY.', 'YYYYYYYYGGYY', 'YYYYYYYYYYYY', 'yyyyyyyyyyyy', '..k......k..'];
+const GEODE_ROWS = ['...kkkk...', '.kkGGGGkk.', 'kGGLLLLGGk', 'kGLDDDDLGk', 'kGLDwDDLGk', 'kGLDDDDLGk', 'kGGLLLLGGk', '.kkGGGGkk.', '...kkkk...'];
+const SHOT_ROWS = [['..L..', '.LDL.', 'LDwDL', '.LDL.', '..L..'], ['L...L', '.LDL.', '.DwD.', '.LDL.', 'L...L']];
+const BOOTS_ROWS = ['..BB..BB..', '..BB..BB..', '..BB..BB..', '..BBB.BBB.', '.BBBB.BBBB', '.ssss.ssss'];
+// Fossil block: an ammonite spiral pressed into stone. Bump it from below.
+const QBLOCK_ROWS = [
+  'kkkkkkkkkkkkkkkk',
+  'kSSSSSSSSSSSSSSk',
+  'kSsSSSSSSSSSSsSk',
+  'kSSSSSggggSSSSSk',
+  'kSSSSgSSSSgSSSSk',
+  'kSSSgSSgggSgSSSk',
+  'kSSSgSgSSSgSgSSk',
+  'kSSSgSgSgSgSgSSk',
+  'kSSSgSgSggSSgSSk',
+  'kSSSgSSgSSSSgSSk',
+  'kSSSSgSSggggSSSk',
+  'kSSSSSgSSSSSSSSk',
+  'kSSSSSSggggSSSSk',
+  'kSsSSSSSSSSSSsSk',
+  'kSSSSSSSSSSSSSSk',
+  'kkkkkkkkkkkkkkkk',
+];
+
+function sprite(rows, pal) {
+  const c = document.createElement('canvas');
+  c.width = rows[0].length; c.height = rows.length;
+  const g = c.getContext('2d');
+  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x, y, 1, 1); } }));
+  return c;
+}
+// Hero variants: hard hat swaps the fedora for a lamp helmet; geode power tints the shirt purple
+const HERO_TOP_HAT = ['....YYYY....', '...YwYYYY...', '..YwYYYYGG..', '.yyyyyyyyyy.', ...HERO_TOP.slice(4)];
+const HAT_COLORS = { Y: '#f2c14e', y: '#a87a12', w: '#fff3b0', G: '#fff6c8' };
+const GEODE_COLORS = { W: '#d6c2f0', b: '#9b7ac8' };
+const HEROES = {};
+for (const hat of [0, 1]) for (const geo of [0, 1]) {
+  const set = HEROES[`${hat}${geo}`] = {};
+  const pal = { ...HERO_PAL, ...(hat ? HAT_COLORS : {}), ...(geo ? GEODE_COLORS : {}) };
+  for (const k in HERO_LEGS) set[k] = sprite([...(hat ? HERO_TOP_HAT : HERO_TOP), ...HERO_LEGS[k]], pal);
+}
+const HERO = HEROES['00'];
+const heroSet = () => HEROES[`${pl.hat ? 1 : 0}${pl.geode ? 1 : 0}`];
+const ITEM_IMG = {
+  crystal: sprite(CRYSTAL_ROWS, { w: '#f4eefc', L: '#d6c2f0', D: '#9b7ac8' }),
+  life: sprite(CANTEEN_ROWS, { b: '#4a3220', c: '#a7b0b5', G: '#4f7a45', L: '#8fbf7a' }),
+  hat: sprite(HARDHAT_ROWS, { Y: '#f2c14e', y: '#a87a12', w: '#fff3b0', G: '#fff6c8', k: '#3e2a18' }),
+  geode: sprite(GEODE_ROWS, { k: '#4a3f3a', G: '#8c8078', L: '#d6c2f0', D: '#9b7ac8', w: '#ffffff' }),
+  boots: sprite(BOOTS_ROWS, { B: '#9a5a2a', s: '#2a1d14' }),
+};
+const QBLOCK = [
+  sprite(QBLOCK_ROWS, { k: '#3b2a20', S: '#b08a5a', s: '#e0c08a', g: '#f2c14e' }),
+  sprite(QBLOCK_ROWS, { k: '#3b2a20', S: '#b08a5a', s: '#e0c08a', g: '#b87a24' }),
+];
+const USED_BLOCK = sprite(QBLOCK_ROWS, { k: '#2a1d16', S: '#6e5640', s: '#8a7058', g: '#5a4432' });
+const HAMMER = { up: sprite(HAMMER_UP, { G: '#a7b0b5', w: '#7a5230' }), down: sprite(HAMMER_DOWN, { G: '#a7b0b5', w: '#7a5230' }) };
+for (const a of Object.values(ANIMALS)) a.img = a.frames.map(f => sprite(f, a.pal));
+const NOTE_IMG = sprite(NOTE_ROWS, NOTE_PAL);
+const SHOT_IMG = SHOT_ROWS.map(r => sprite(r, { L: '#d6c2f0', D: '#9b7ac8', w: '#ffffff' }));
+const CLAM = CLAM_ROWS.map(r => sprite(r, { C: '#d8cbb0', c: '#9c8a6a', P: '#e8a0a8' }));
+const ROCK_IMG = sprite(ROCK_ROWS, ROCK_PAL);
+
+// Seeded noise so tile textures are stable between frames
+function hash(x, y, s = 0) {
+  let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function makeTiles(lv) {
+  const c = lv.c, out = {};
+  const tile = draw => { const cv = document.createElement('canvas'); cv.width = cv.height = 16; draw(cv.getContext('2d')); return cv; };
+  const px = (g, x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  const rock = (g, v) => {
+    g.fillStyle = c.rock; g.fillRect(0, 0, 16, 16);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const n = hash(x, y, v + 7);
+      let line = false;
+      // Chinle: bright bands of ash-colored mudstone
+      if (lv.bedding === 'banded') px(g, x, y, c.bands[Math.floor((y + v * 3) / 3) % c.bands.length]);
+      // Navajo: foresets dip west, the direction the wind blows (from the east in this game)
+      if (lv.bedding === 'cross') line = ((x + v * 5 + Math.floor(y * 1.6)) % 7 + 7) % 7 === 0 || (y === 0 && v % 2 === 0);
+      else if (lv.bedding === 'thin') line = y % 3 === 1 && n > 0.1;
+      else if (lv.bedding === 'flat') line = (y === 5 || y === 12) && n > 0.15;
+      if (line) px(g, x, y, c.line);
+      else if (n < 0.07) px(g, x, y, c.dark);
+      else if (n > 0.95) px(g, x, y, c.line);
+    }
+  };
+  out.rock = [0, 1, 2].map(v => tile(g => rock(g, v)));
+  out.top = [0, 1, 2].map(v => tile(g => {
+    rock(g, v);
+    g.fillStyle = c.top; g.fillRect(0, 0, 16, 3);
+    for (let x = 0; x < 16; x++) {
+      if (hash(x, 3, v) > 0.45) px(g, x, 3, c.top);
+      if (hash(x, 0, v + 3) > 0.7) px(g, x, 1, c.topDark);
+    }
+    // Moenkopi: ripple marks left by water and waves
+    if (lv.bedding === 'thin') for (let x = 0; x < 16; x++) if ((x + v) % 4 === 0) { px(g, x, 4, c.topDark); px(g, x + 1, 5, c.topDark); }
+  }));
+  out.ledge = tile(g => {
+    g.fillStyle = c.dark; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = c.rock; g.fillRect(1, 3, 14, 11);
+    g.fillStyle = c.top; g.fillRect(0, 0, 16, 3);
+    g.fillStyle = c.dark; g.fillRect(0, 8, 16, 1); g.fillRect(7, 3, 1, 5); g.fillRect(3, 9, 1, 6); g.fillRect(12, 9, 1, 6);
+  });
+  out.log = tile(g => {
+    g.fillStyle = '#5a3d24'; g.fillRect(0, 2, 16, 12);
+    g.fillStyle = '#7d5634'; g.fillRect(0, 3, 16, 4);
+    g.fillStyle = '#3f2a18'; g.fillRect(0, 13, 16, 1); g.fillRect(2, 9, 5, 1); g.fillRect(9, 11, 5, 1);
+  });
+  out.logEnd = tile(g => {
+    g.drawImage(out.log, 0, 0);
+    g.fillStyle = '#c99d6c'; g.fillRect(12, 2, 4, 12);
+    g.fillStyle = '#8b6a45'; g.fillRect(13, 5, 2, 6);
+  });
+  out.boulder = tile(g => {
+    const rows = ['....kkkkkk......', '..kkGGGGGGkk....', '.kGGLLGGGGGGk...', '.kGLLGGGGGGGGk..', 'kGGGGGGGGGkGGk..', 'kGGGGGGGGkGGGGk.', 'kGGGGGGGkGGGGGk.', 'kGGGGGGGGkGGGGGk', 'kGGGGGGGGGkGGGGk', 'kGGGGGGGGGGGGGGk', '.kGGGGGGGGGGGGGk', '.kGGGGGGGGGGGGk.', '..kGGGGGGGGGGGk.', '...kkGGGGGGGkk..', '.....kkkkkkk....', '................'];
+    g.drawImage(sprite(rows, { k: '#3e3632', G: '#7f7268', L: '#a99a8c' }), 0, 0);
+  });
+  out.crumble = tile(g => {
+    g.fillStyle = '#a2643f'; g.fillRect(0, 0, 16, 12);
+    g.fillStyle = '#c98a5c'; g.fillRect(0, 0, 16, 3);
+    g.fillStyle = '#5e3520';
+    [[3, 3], [4, 4], [5, 5], [5, 6], [4, 7], [4, 8], [11, 3], [10, 4], [10, 5], [11, 6], [12, 7], [12, 8], [8, 9], [7, 10]].forEach(([x, y]) => g.fillRect(x, y, 1, 1));
+    g.fillRect(0, 11, 16, 1);
+  });
+  // Chinle bentonite: popcorn texture, swollen and darker when wet
+  const popcorn = (base, light, dark) => tile(g => {
+    g.fillStyle = base; g.fillRect(0, 0, 16, 16);
+    for (let y = 0; y < 16; y += 3) for (let x = (y % 2) * 2; x < 16; x += 4) { g.fillStyle = light; g.fillRect(x, y, 2, 2); g.fillStyle = dark; g.fillRect(x + 2, y + 2, 1, 1); }
+  });
+  out.popDry = popcorn('#b3a3b6', '#d4c8d6', '#7d6a80');
+  out.popWet = popcorn('#8a7090', '#a990ae', '#5a465e');
+  out.popTop = tile(g => { g.drawImage(out.popWet, 0, 0); g.clearRect(0, 0, 2, 2); g.clearRect(14, 0, 2, 2); g.clearRect(0, 0, 1, 4); g.clearRect(15, 0, 1, 4); });
+  return out;
+}
+
+// ============================================================
+// SOUND EFFECTS: 8-bit style, synthesized with the Web Audio API.
+// Browsers only allow sound after the first click or key press.
+// ============================================================
+const SFX = (() => {
+  let ac = null, out = null, noiseBuf = null, muted = false;
+  try { muted = localStorage.getItem('zion-muted') === '1'; } catch (e) {}
+  function init() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ac = new AC();
+      out = ac.createGain(); out.gain.value = muted ? 0 : 0.5; out.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      setupMusic();
+      if (wantKey) music(wantKey);
+    }
+    if (ac.state === 'suspended') ac.resume();
+  }
+  function tone(f0, f1, dur, { type = 'square', vol = 0.15, at = 0 } = {}) {
+    const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, { vol = 0.2, freq = 1000, q = 1, type = 'bandpass', at = 0, f1 } = {}) {
+    const t = ac.currentTime + at, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noiseBuf; src.loop = true; f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(freq, t);
+    if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(out); src.start(t); src.stop(t + dur + 0.02);
+  }
+  const seq = (freqs, step, opts) => freqs.forEach((f, i) => { if (f) tone(f, f, step * 1.1, { ...opts, at: (opts.at || 0) + i * step }); });
+  const FX = {
+    jump: () => tone(260, 620, 0.13, { vol: 0.08 }),
+    swim: () => tone(380, 760, 0.08, { type: 'sine', vol: 0.1 }),
+    splash: () => noise(0.35, { vol: 0.25, freq: 1800, f1: 300, q: 0.8 }),
+    stomp: () => { tone(520, 140, 0.12, { vol: 0.12 }); noise(0.06, { vol: 0.15, freq: 900 }); },
+    bonk: () => { noise(0.07, { vol: 0.3, freq: 1600, q: 2 }); tone(220, 90, 0.1, { vol: 0.12 }); },
+    throw: () => { tone(900, 300, 0.1, { type: 'triangle', vol: 0.12 }); noise(0.05, { vol: 0.06, freq: 2500 }); },
+    swing: () => noise(0.06, { vol: 0.08, freq: 3000, f1: 1200, q: 1.5 }),
+    crystal: () => seq([1175, 1568], 0.06, { vol: 0.06 }),
+    bump: () => { tone(150, 90, 0.09, { vol: 0.15 }); noise(0.05, { vol: 0.12, freq: 500, type: 'lowpass' }); },
+    sprout: () => tone(300, 900, 0.3, { type: 'triangle', vol: 0.15 }),
+    powerup: () => seq([523, 659, 784, 1047, 1319], 0.06, { type: 'triangle', vol: 0.18 }),
+    oneup: () => seq([784, 988, 1175, 1568, 0, 1568], 0.07, { vol: 0.07 }),
+    note: () => { seq([587, 740, 880, 1175], 0.09, { type: 'triangle', vol: 0.2 }); tone(587, 587, 0.3, { vol: 0.05, at: 0.27 }); },
+    hurt: () => tone(520, 180, 0.2, { vol: 0.12 }),
+    die: () => { seq([660, 0, 494, 392, 330, 262], 0.09, { vol: 0.09 }); noise(0.25, { vol: 0.08, freq: 400, type: 'lowpass', at: 0.5 }); },
+    checkpoint: () => seq([659, 880, 1319], 0.07, { type: 'triangle', vol: 0.18 }),
+    boulder: () => { noise(0.3, { vol: 0.35, freq: 700, type: 'lowpass', f1: 150 }); tone(110, 45, 0.25, { vol: 0.15 }); },
+    dig: () => { for (let i = 0; i < 3; i++) noise(0.06, { vol: 0.25, freq: 600, type: 'lowpass', at: i * 0.09 }); tone(400, 80, 0.4, { type: 'triangle', vol: 0.12, at: 0.25 }); },
+    emerge: () => tone(200, 700, 0.25, { type: 'triangle', vol: 0.15 }),
+    crumble: () => noise(0.18, { vol: 0.12, freq: 900, type: 'lowpass', f1: 200 }),
+    flood: () => { noise(1.6, { vol: 0.25, freq: 220, type: 'lowpass', q: 0.7 }); seq([440, 0, 440, 0, 440], 0.12, { vol: 0.05 }); },
+    storm: () => noise(2.5, { vol: 0.2, freq: 500, f1: 1500, q: 1.2 }),
+    rockwarn: () => seq([1400, 0, 1400], 0.05, { type: 'triangle', vol: 0.08 }),
+    rockhit: () => noise(0.15, { vol: 0.18, freq: 500, type: 'lowpass' }),
+    blocked: () => tone(160, 150, 0.18, { type: 'sawtooth', vol: 0.07 }),
+    right: () => seq([784, 1047, 1319], 0.08, { type: 'triangle', vol: 0.18 }),
+    wrong: () => tone(196, 180, 0.25, { type: 'sawtooth', vol: 0.08 }),
+    clear: () => seq([523, 659, 784, 1047, 0, 784, 1047, 1319, 1568], 0.08, { vol: 0.07 }),
+  };
+
+  // ---------- MUSIC: a small chiptune sequencer. Every tune is original, generated from the settings below. ----------
+  const SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], mixo: [0, 2, 4, 5, 7, 9, 10], phryg: [0, 1, 4, 5, 7, 8, 10], lydian: [0, 2, 4, 6, 7, 9, 11], harm: [0, 2, 3, 5, 7, 8, 11] };
+  const DRUMS = {
+    light: { k: 'x.......x.......', s: '................', h: '..x...x...x...x.' },
+    march: { k: 'x.......x.......', s: '....x.......x.xx', h: 'x.x.x.x.x.x.x.x.' },
+    drive: { k: 'x.....x.x.......', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+    stomp: { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.' },
+    hand:  { k: 'x......x..x.....', s: '...x.......x..x.', h: '................' },
+    rock:  { k: 'x.x...x.x.x...x.', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  };
+  const SONGS = {
+    title: { bpm: 120, root: 60, scale: 'major', prog: [0, 4, 5, 3], bass: 'x.x.x.x.x.x.x.x.', drums: 'march', lead: 0.55, seed: 7, wave: 'p25' },
+    l1:    { bpm: 104, root: 62, scale: 'major', prog: [0, 3, 0, 4], bass: 'x.....x.x...x...', drums: 'light', lead: 0.45, seed: 11, wave: 'p25' },
+    l2:    { bpm: 144, root: 62, scale: 'dorian', prog: [0, 6, 5, 6], bass: 'x.xxx.xxx.xxx.xx', drums: 'drive', lead: 0.6, seed: 23, wave: 'p12' },
+    l3:    { bpm: 112, root: 57, scale: 'mixo', prog: [0, 6, 3, 0], bass: 'x...x...x...x.x.', drums: 'stomp', lead: 0.5, seed: 31, wave: 'square' },
+    l4:    { bpm: 90, root: 64, scale: 'phryg', prog: [0, 1, 0, 6], bass: 'x.......x..x....', drums: 'hand', lead: 0.35, seed: 41, wave: 'p25' },
+    l5:    { bpm: 84, root: 65, scale: 'lydian', prog: [0, 1, 4, 3], bass: 'x.......x.......', drums: null, lead: 0.4, seed: 53, wave: 'triangle', arp: true, echo: 0.35 },
+    l6:    { bpm: 128, root: 60, scale: 'major', prog: [0, 5, 3, 4], bass: 'x.x.x.x.x.x.x.x.', drums: 'rock', lead: 0.6, seed: 61, wave: 'p25', arp: true },
+    cave:  { bpm: 150, root: 57, scale: 'minor', prog: [0, 5, 6, 4], bass: 'x..x..x.x..x..x.', drums: 'light', lead: 0.5, seed: 71, wave: 'p12', echo: 0.25 },
+    boss:  { bpm: 164, root: 52, scale: 'harm', prog: [0, 5, 3, 4], bass: 'xxxxxxxxxxxxxxxx', drums: 'rock', lead: 0.65, seed: 83, wave: 'square' },
+    end:   { bpm: 96, root: 60, scale: 'major', prog: [0, 3, 4, 0], bass: 'x...x...x...x...', drums: 'march', lead: 0.4, seed: 97, wave: 'p25', arp: true },
+  };
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  function rng(seed) {
+    return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function compose(def) {
+    const sc = SCALES[def.scale], R = rng(def.seed), bars = 8, ev = Array.from({ length: bars * 16 }, () => []);
+    const note = (d, oct) => def.root + sc[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct);
+    // two one-bar rhythms and melody shapes, reused so each tune has a hook (A A B A phrasing)
+    const rhythm = () => Array.from({ length: 16 }, (_, i) => R() < (i % 4 === 0 ? def.lead + 0.35 : i % 2 === 0 ? def.lead : def.lead * 0.35));
+    const contour = () => { let p = 2; return Array.from({ length: 16 }, () => (p = Math.max(-1, Math.min(7, p + Math.round((R() - 0.5) * 3))))); };
+    const rA = rhythm(), rB = rhythm(), cA = contour(), cB = contour(), beat = Array.from({ length: 16 }, () => [0, 2, 4][Math.floor(R() * 3)]);
+    for (let b = 0; b < bars; b++) {
+      const ch = def.prog[b % def.prog.length], useB = b === 4 || b === 5;
+      const r = useB ? rB : rA, c = useB ? cB : cA;
+      for (let i = 0; i < 16; i++) {
+        const st = ev[b * 16 + i];
+        if (def.bass[i] === 'x') st.push({ v: 'bass', f: mtof(note(ch, -2) + (i === 6 || i === 14 ? 7 : 0)), d: 0.9 });
+        if (b % 4 === 3 && i >= 8) { if (i === 8) st.push({ v: 'lead', f: mtof(note(ch, 1)), d: 7 }); }
+        else if (r[i]) {
+          let len = 1; while (len < 4 && i + len < 16 && !r[i + len]) len++;
+          st.push({ v: 'lead', f: mtof(note(ch + (i % 4 === 0 ? beat[i] : c[i]), 1)), d: len });
+        }
+        if (def.arp && i % 2 === 0) st.push({ v: 'arp', f: mtof(note(ch + [0, 2, 4, 7][(i / 2) % 4], 0)), d: 1 });
+        const dr = def.drums && DRUMS[def.drums];
+        if (dr) for (const k of ['k', 's', 'h']) if (dr[k][i] === 'x') st.push({ v: k });
+      }
+    }
+    return { bpm: def.bpm, ev, echo: def.echo || 0, wave: def.wave };
+  }
+  let waves = null, mOut = null, mWet = null, song = null, songKey = null, wantKey = null, mStep = 0, mNext = 0, mTimer = null, musicOff = false;
+  const songCache = {};
+  try { musicOff = localStorage.getItem('zion-music') === '0'; } catch (e) {}
+  function setupMusic() {
+    const pulse = duty => { const n = 32, re = new Float32Array(n), im = new Float32Array(n); for (let k = 1; k < n; k++) re[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * duty); return ac.createPeriodicWave(re, im); };
+    waves = { p25: pulse(0.25), p12: pulse(0.125) };
+    mOut = ac.createGain(); mOut.gain.value = musicOff ? 0 : 0.55; mOut.connect(out);
+    const delay = ac.createDelay(1), fb = ac.createGain(); mWet = ac.createGain();
+    delay.delayTime.value = 0.27; fb.gain.value = 0.35; mWet.gain.value = 0;
+    mOut.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(mWet); mWet.connect(out);
+  }
+  function voice(f, t, len, wave, vol) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    if (waves[wave]) o.setPeriodicWave(waves[wave]); else o.type = wave;
+    o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.008);
+    g.gain.setValueAtTime(vol, t + Math.max(0.01, len * 0.7)); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(mOut); o.start(t); o.stop(t + len + 0.02);
+  }
+  function hit(kind, t) {
+    if (kind === 'k') {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      o.connect(g); g.connect(mOut); o.start(t); o.stop(t + 0.15);
+      return;
+    }
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), dur = kind === 's' ? 0.1 : 0.03;
+    src.buffer = noiseBuf; f.type = kind === 's' ? 'bandpass' : 'highpass'; f.frequency.value = kind === 's' ? 1800 : 7000;
+    g.gain.setValueAtTime(kind === 's' ? 0.16 : 0.06, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(mOut); src.start(t); src.stop(t + dur + 0.02);
+  }
+  function tick() {
+    if (!ac || !song || muted || musicOff) { if (ac) mNext = ac.currentTime + 0.05; return; }
+    const stepT = 60 / song.bpm / 4;
+    while (mNext < ac.currentTime + 0.2) {
+      for (const e of song.ev[mStep]) {
+        if (e.v === 'lead') voice(e.f, mNext, e.d * stepT * 0.95, song.wave, song.wave === 'triangle' ? 0.13 : 0.055);
+        else if (e.v === 'bass') voice(e.f, mNext, stepT * 0.9, 'triangle', 0.17);
+        else if (e.v === 'arp') voice(e.f, mNext, stepT * 0.8, 'p12', 0.025);
+        else hit(e.v, mNext);
+      }
+      mNext += stepT; mStep = (mStep + 1) % song.ev.length;
+    }
+  }
+  function music(key) {
+    wantKey = key;
+    if (!ac || key === songKey) return;
+    songKey = key;
+    song = key && SONGS[key] ? (songCache[key] = songCache[key] || compose(SONGS[key])) : null;
+    mStep = 0; mNext = ac.currentTime + 0.08;
+    mWet.gain.value = song ? song.echo : 0;
+    if (!mTimer) mTimer = setInterval(tick, 40);
+  }
+
+  return {
+    init,
+    music,
+    get musicOff() { return musicOff; },
+    toggleMusic() {
+      musicOff = !musicOff;
+      try { localStorage.setItem('zion-music', musicOff ? '0' : '1'); } catch (e) {}
+      if (mOut) mOut.gain.value = musicOff ? 0 : 0.55;
+      return musicOff;
+    },
+    play(name) { if (!ac || muted) return; try { FX[name]?.(); } catch (e) {} },
+    get muted() { return muted; },
+    toggle() {
+      muted = !muted;
+      try { localStorage.setItem('zion-muted', muted ? '1' : '0'); } catch (e) {}
+      if (out) out.gain.value = muted ? 0 : 0.5;
+      return muted;
+    },
+  };
+})();
+
+// ============================================================
+// ENGINE
+// ============================================================
+const T = 16, VW = 512, VH = 288, TOP = 8;
+const RUN = 130, ACC_G = 1300, ACC_A = 820, GRAV = 1020, JUMP = -370, CUT = -140, MAXFALL = 480;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const overlay = document.getElementById('overlay');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HAMMER_KEY = window.matchMedia('(pointer: coarse)').matches ? 'tap the HAMMER button' : 'press X';
+
+let state = 'title';
+let levelIdx = 0, L = LEVELS[0], TILES = null, ROWS = 18;
+let grid = [], mapW = 0;
+let notes = [], enemies = [], checkpoints = [], signs = [], goal = null;
+let rocks = [], particles = [], crumbles = new Map();
+let respawnPt = { x: 0, y: 0 };
+let camX = 0, camY = 0, time = 0, levelTime = 0;
+let liquidY = null, wind = 0, storm = 0, stormWarn = 0, hz = { t: 0 }, rockTimer = 2, banner = null;
+let pendingNote = null, floaters = [], goalMsg = 0, popWet = false;
+let shakeT = 0, boss = null;
+let digSites = [], digExits = [], inBonus = false, saved = null, bonusExit = null, fadeT = 0;
+let items = [], platforms = [], bumps = new Map(), shots = [];
+let deaths = 0, lives = 5, crystals = 0;
+const START_LIVES = 5, CRYSTALS_PER_LIFE = 30, BOOTS_TIME = 12;
+const LAYERS = 6;   // rock-layer levels; the boss level comes after them
+const notesGot = [0, 0, 0, 0, 0, 0, 0];
+const journal = (() => {
+  try { const j = JSON.parse(localStorage.getItem('zion-journal')); if (Array.isArray(j) && j.length === 6) return j; } catch (e) {}
+  return [0, 1, 2, 3, 4, 5].map(() => [false, false, false]);
+})();
+function saveJournal() { try { localStorage.setItem('zion-journal', JSON.stringify(journal)); } catch (e) {} }
+const pl = { x: 0, y: 0, w: 10, h: 14, vx: 0, vy: 0, onGround: false, onPlat: null, face: 1, coyote: 0, buffer: 0, anim: 0, hammer: 0, dead: 0, inv: 0, swim: false, canCut: false, hat: false, boots: 0, geode: false };
+
+const keys = { left: false, right: false, jump: false, hammer: false, down: false };
+const input = { jumpPressed: false, hammerPressed: false, downPressed: false };
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const approach = (v, t, d) => v < t ? Math.min(v + d, t) : Math.max(v - d, t);
+const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+
+function buildLevel(i) {
+  levelIdx = i; L = LEVELS[i]; TILES = makeTiles(L);
+  const seq = [...L.chunks, 'wall'].map(n => CHUNKS[n]);
+  const depth = Math.max(...seq.map(c => c.length));
+  ROWS = TOP + depth;
+  grid = Array.from({ length: ROWS }, () => []);
+  for (const c of seq) {
+    const w = c[0].length;
+    for (let r = 0; r < TOP; r++) for (let x = 0; x < w; x++) grid[r].push('.');
+    for (let r = 0; r < depth; r++) {
+      // short land chunks extend down as bedrock under ground, or stay open under a pit
+      const row = c[r] ?? [...c[c.length - 1]].map(ch => ch === '#' ? '#' : '.').join('');
+      for (const ch of row) grid[TOP + r].push(ch);
+    }
+  }
+  mapW = grid[0].length;
+  notes = []; enemies = []; checkpoints = []; signs = []; goal = null;
+  rocks = []; particles = []; crumbles = new Map();
+  items = []; platforms = []; bumps = new Map(); floaters = []; goalMsg = 0;
+  digSites = []; digExits = []; inBonus = false; saved = null; bonusExit = null;
+  boss = L.boss ? makeBoss() : null;
+  let noteIdx = 0, animalIdx = 0;
+  for (let x = 0; x < mapW; x++) for (let y = 0; y < ROWS; y++) {
+    const c = grid[y][x];
+    if (c === 'd' && grid[y][x - 1] !== 'd') digSites.push({ x: x * T + T, y: y * T, tx: x, ty: y });
+    if (!'NERCSKGoMVJZ'.includes(c)) continue;
+    const inWater = grid[y][x - 1] === 'w' || grid[y][x + 1] === 'w';
+    grid[y][x] = inWater ? 'w' : '.';
+    const px = x * T, py = y * T;
+    if (c === 'o') items.push({ type: 'crystal', x: px + 4, y: py + 4, w: 8, h: 8, rise: 0 });
+    if (c === 'M') platforms.push({ x: px, y: py, x0: px, y0: py, w: 3 * T, axis: 'x', range: 8 * T, speed: 0.9, t: 0, dx: 0, dy: 0 });
+    if (c === 'V') platforms.push({ x: px, y: py, x0: px, y0: py, w: 3 * T, axis: 'y', range: 5 * T, speed: 0.8, t: 0, dx: 0, dy: 0 });
+    if (c === 'N') notes.push({ x: px + 8, y: py + 8, idx: noteIdx++, got: false });
+    if (c === 'E') {
+      const type = inWater ? 'snail' : L.animals[animalIdx++ % L.animals.length];
+      const A = ANIMALS[type], devil = type === 'devil';
+      const w = devil ? 10 : Math.min(A.img[0].width - 2, 14), h = devil ? 18 : Math.min(A.img[0].height, 12);
+      enemies.push({ type, x: px + 8 - w / 2, y: py + T - h, w, h, vx: -A.speed, water: false, noStomp: devil, alive: true, dieT: 0, t: Math.random() * 6, by: py + T - h });
+    }
+    if (c === 'R') enemies.push({ type: 'clam', x: px + 2, y: py + T - 7, w: 12, h: 7, vx: 0, water: true, still: true, alive: true, dieT: 0, t: Math.random() * 2.4, by: py + T - 7 });
+    if (c === 'C') checkpoints.push({ x: px + 8, y: py + T, active: false });
+    if (c === 'S') signs.push({ x: px + 8, y: py + T, text: L.hint });
+    if (c === 'K') signs.push({ x: px + 8, y: py + T, text: `A boulder blocks the way. Face it and ${HAMMER_KEY} to swing your rock hammer.` });
+    if (c === 'J') signs.push({ x: px + 8, y: py + T, text: `Cracked ground ahead! Stand on it and ${HAMMER_KEY} to dig down into a hidden cave.` });
+    if (c === 'Z') digExits.push({ x: px + 8 - pl.w / 2, y: py + T - pl.h });
+    if (c === 'G') goal = { x: px + 8, y: py + T };
+  }
+  if (noteIdx !== 3 && !L.boss) console.warn('Level', i + 1, 'has', noteIdx, 'field notes');
+  respawnPt = { x: 2 * T, y: (TOP + 8) * T - pl.h };
+  notesGot[i] = 0; pendingNote = null;
+  hz = { t: 0 }; wind = 0; storm = 0; stormWarn = 0; banner = null; rockTimer = 2.5; levelTime = 0;
+  liquidY = L.c.liquid ? 16.8 : null;
+  respawn(true);
+  camX = 0; camY = clamp(pl.y - VH * 0.45, 0, ROWS * T - VH);
+}
+
+function tileAt(tx, ty) {
+  if (tx < 0 || tx >= mapW) return '#';
+  if (ty < 0 || ty >= ROWS) return '.';
+  return grid[ty][tx];
+}
+function solid(tx, ty) {
+  const c = tileAt(tx, ty);
+  if (c === '#' || c === '=' || c === 'B' || c === 'Q' || c === 'P' || c === 'u' || c === 'p' || c === 'd') return true;
+  if (c >= '1' && c <= '4') return true;
+  if (c === '.' && popWet && tileAt(tx, ty + 1) === 'p') return true;
+  if (c === 'x') { const s = crumbles.get(tx + ',' + ty); return !s || !s.gone; }
+  return false;
+}
+
+function respawn(first) {
+  pl.x = respawnPt.x; pl.y = respawnPt.y; pl.vx = 0; pl.vy = 0; pl.dead = 0;
+  pl.inv = first ? 0 : 1.2; pl.onGround = false; pl.onPlat = null; pl.face = 1;
+  if (first) { pl.hat = false; pl.boots = 0; pl.geode = false; }
+  shots = [];
+  rocks = []; hz.t = 0; popWet = false; wind = 0; storm = 0; stormWarn = 0; banner = null; rockTimer = 2;
+  if (L.mech === 'flood') liquidY = 16.8;
+  if (boss && !first) { boss.x = 24 * T; boss.y = 16 * T; boss.air = false; boss.vx = 0; boss.think = 2; }
+}
+// Pits and floods always cost a life; animals and rocks only knock off the hard hat if you have one.
+function killPlayer() {
+  if (pl.dead > 0 || pl.inv > 0) return;
+  pl.dead = 0.8; deaths++; lives--; SFX.play('die');
+  pl.hat = false; pl.boots = 0; pl.geode = false;
+  burst(pl.x + pl.w / 2, pl.y + pl.h / 2, 16, '#f3e6d6', 120);
+}
+function hurtPlayer() {
+  if (pl.dead > 0 || pl.inv > 0) return;
+  if (pl.geode) {
+    pl.geode = false; pl.inv = 1.5; SFX.play('hurt');
+    burst(pl.x + pl.w / 2, pl.y + 6, 12, '#d6c2f0', 90);
+    floater('GEODES LOST', pl.x + pl.w / 2, pl.y - 4, '#d6c2f0');
+    return;
+  }
+  if (pl.hat) {
+    pl.hat = false; pl.inv = 1.5; SFX.play('hurt');
+    burst(pl.x + pl.w / 2, pl.y, 12, '#f2c14e', 90);
+    floater('HAT LOST', pl.x + pl.w / 2, pl.y - 4, '#f2c14e');
+    return;
+  }
+  killPlayer();
+}
+function floater(text, x, y, color = '#f3e6d6') { floaters.push({ text, x, y, t: 1.1, color }); }
+function addCrystals(n, x, y) {
+  crystals += n; SFX.play('crystal');
+  if (crystals >= CRYSTALS_PER_LIFE) { crystals -= CRYSTALS_PER_LIFE; lives++; floater('1-UP', x, y - 10, '#8fbf7a'); SFX.play('oneup'); }
+}
+
+function bumpBlock(tx, ty) {
+  const c = grid[ty][tx];
+  if (c >= '1' && c <= '4') { bumps.set(tx + ',' + ty, 0.15); answerBlock(+c - 1); return; }
+  if (c !== 'Q' && c !== 'P' && c !== 'h') return;
+  grid[ty][tx] = 'u';
+  bumps.set(tx + ',' + ty, 0.15);
+  SFX.play(c === 'Q' ? 'bump' : 'sprout');
+  const x = tx * T, y = ty * T;
+  if (c === 'Q') {
+    addCrystals(1, x + 8, y);
+    items.push({ type: 'crystal', x: x + 4, y: y - 10, w: 8, h: 8, pop: 0.5 });
+  } else {
+    const type = c === 'h' ? 'life' : !pl.hat ? 'hat' : !pl.geode ? 'geode' : 'boots';
+    const img = ITEM_IMG[type];
+    items.push({ type, x: x + 8 - img.width / 2, y: y - 1, w: img.width, h: img.height, rise: img.height + 1 });
+  }
+  // knock out any animal standing on the block
+  for (const e of enemies) if (e.alive && Math.abs(e.y + e.h - y) < 3 && e.x + e.w > x && e.x < x + T) { e.alive = false; e.dieT = 0.4; }
+}
+
+function updateItems(dt) {
+  for (const it of items) {
+    if (it.pop !== undefined) { it.pop -= dt; it.y -= 40 * dt; if (it.pop <= 0) it.done = true; continue; }
+    if (it.rise > 0) { const d = Math.min(it.rise, 30 * dt); it.rise -= d; it.y -= d; continue; }
+    if (pl.dead > 0) continue;
+    if (pl.x + pl.w > it.x && pl.x < it.x + it.w && pl.y + pl.h > it.y && pl.y < it.y + it.h) {
+      it.done = true;
+      const cx = it.x + it.w / 2;
+      if (it.type === 'crystal') { addCrystals(1, cx, it.y); burst(cx, it.y + 4, 5, '#d6c2f0', 40, 0); }
+      if (it.type === 'hat') { pl.hat = true; SFX.play('powerup'); floater('HARD HAT!', cx, it.y, '#f2c14e'); }
+      if (it.type === 'geode') { pl.geode = true; SFX.play('powerup'); floater('GEODES!', cx, it.y, '#d6c2f0'); }
+      if (it.type === 'boots') { pl.boots = BOOTS_TIME; SFX.play('powerup'); floater('TRAIL BOOTS!', cx, it.y, '#e2774a'); }
+      if (it.type === 'life') { lives++; SFX.play('oneup'); floater('1-UP', cx, it.y, '#8fbf7a'); }
+    }
+  }
+  items = items.filter(it => !it.done);
+}
+
+// A small cave under the dig site, like a secret room: crystals, prize blocks and a hidden canteen.
+function bonusGrid() {
+  const W = 32, H = 18, g = [];
+  for (let y = 0; y < H; y++) g.push([...(y === 0 || y >= 16 ? '#'.repeat(W) : '#' + '.'.repeat(W - 2) + '#')]);
+  const put = (x, y, ch) => { g[y][x] = ch; };
+  for (let x = 6; x <= 10; x++) put(x, 13, '=');
+  for (let x = 13; x <= 18; x++) put(x, 10, '=');
+  for (let x = 21; x <= 25; x++) put(x, 13, '=');
+  [7, 8, 9].forEach(x => put(x, 12, 'o'));
+  [14, 15, 16, 17].forEach(x => put(x, 9, 'o'));
+  [22, 23, 24].forEach(x => put(x, 12, 'o'));
+  for (let x = 4; x <= 26; x += 2) put(x, 15, 'o');
+  put(14, 6, 'Q'); put(15, 6, 'P'); put(16, 6, 'Q'); put(17, 6, 'Q');
+  put(28, 12, 'h');
+  put(29, 15, 'X');
+  return g;
+}
+function enterBonus(ret) {
+  SFX.play('dig'); SFX.music('cave'); shots = [];
+  saved = { grid, mapW, ROWS, notes, enemies, checkpoints, signs, goal, items, platforms, crumbles, liquidY, respawnPt, rocks, ret };
+  grid = bonusGrid(); mapW = 32; ROWS = 18;
+  notes = []; enemies = []; checkpoints = []; signs = []; goal = null; items = []; platforms = []; crumbles = new Map(); rocks = []; liquidY = null;
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < mapW; x++) {
+    if (grid[y][x] === 'o') { items.push({ type: 'crystal', x: x * T + 4, y: y * T + 4, w: 8, h: 8, rise: 0 }); grid[y][x] = '.'; }
+    if (grid[y][x] === 'X') { bonusExit = { x: x * T, y: y * T }; grid[y][x] = '.'; }
+  }
+  inBonus = true; banner = null; wind = 0; storm = 0; stormWarn = 0;
+  pl.x = 3 * T; pl.y = T; pl.vx = 0; pl.vy = 0; pl.onPlat = null;
+  respawnPt = { x: 3 * T, y: 16 * T - pl.h };
+  camX = 0; camY = 0; fadeT = 0.5;
+  floater('BONUS CAVE!', 16 * T, 4 * T, '#f2c14e');
+}
+function exitBonus() {
+  SFX.play('emerge'); SFX.music('l' + (levelIdx + 1)); shots = [];
+  ({ grid, mapW, ROWS, notes, enemies, checkpoints, signs, goal, items, platforms, crumbles, liquidY, respawnPt, rocks } = saved);
+  pl.x = saved.ret.x; pl.y = saved.ret.y; pl.vx = 0; pl.vy = -220; pl.onPlat = null;
+  saved = null; inBonus = false; bonusExit = null; fadeT = 0.5;
+  camX = clamp(pl.x - VW * 0.42, 0, mapW * T - VW); camY = clamp(pl.y - VH * 0.5, 0, ROWS * T - VH);
+  burst(pl.x + pl.w / 2, pl.y + pl.h, 12, L.c.top, 70);
+}
+
+function updateShots(dt) {
+  for (const sh of shots) {
+    sh.t += dt;
+    sh.x += sh.vx * dt;
+    if (solid(Math.floor((sh.x + Math.sign(sh.vx) * 3) / T), Math.floor(sh.y / T))) { sh.done = true; burst(sh.x, sh.y, 6, '#d6c2f0', 60); continue; }
+    sh.vy = Math.min(sh.vy + 900 * dt, 300); sh.y += sh.vy * dt;
+    if (sh.vy > 0 && solid(Math.floor(sh.x / T), Math.floor((sh.y + 3) / T))) { sh.y = Math.floor((sh.y + 3) / T) * T - 3; sh.vy = -125; }
+    if (sh.t > 1.6 || sh.y > ROWS * T || sh.x < camX - 20 || sh.x > camX + VW + 20) sh.done = true;
+    for (const e of enemies) {
+      if (!e.alive || sh.done || (e.type === 'clam' && !clamOpen(e))) continue;
+      if (sh.x + 4 > e.x && sh.x - 4 < e.x + e.w && sh.y + 4 > e.y && sh.y - 4 < e.y + e.h) {
+        e.alive = false; e.dieT = 0.4; sh.done = true; SFX.play('bonk');
+        burst(e.x + e.w / 2, e.y + e.h / 2, 10, '#d6c2f0', 90);
+      }
+    }
+    if (boss && !sh.done && boss.dead <= 0 && sh.x > boss.x && sh.x < boss.x + boss.w && sh.y > boss.y - bossH(boss) && sh.y < boss.y) {
+      sh.done = true; boss.stagger = 0.5; SFX.play('bump'); floater('CLINK', sh.x, sh.y - 6, '#d6c2f0');
+    }
+  }
+  shots = shots.filter(sh => !sh.done);
+}
+
+// ============================================================
+// FINAL LEVEL: the Strata Golem, one band of rock per layer.
+// Each correct answer erodes its top band away.
+// ============================================================
+function makeBoss() {
+  const qs = [1, 2, 3, 4, 5, 6].map(i => {
+    const q = QUIZ[i], order = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
+    return { text: q.question, choices: order.map(k => q.choices[k]), answer: order.indexOf(q.answer), off: [false, false, false, false] };
+  });
+  return { x: 24 * T, y: 16 * T, w: 28, hp: 6, vx: 0, vy: 0, air: false, t: 0, stomp: 4, stun: 0, stagger: 0, think: 4, qs, qi: 0, dead: 0, flash: 0 };
+}
+const bossH = b => 10 + b.hp * 5;
+function answerBlock(i) {
+  const b = boss;
+  if (!b || b.dead > 0) return;
+  const q = b.qs[b.qi];
+  if (!q || q.off[i]) { SFX.play('bump'); return; }
+  if (i === q.answer) {
+    SFX.play('right'); SFX.play('boulder');
+    b.hp--; b.stun = 1.4; b.flash = 0.6; shakeT = 0.4;
+    burst(b.x + b.w / 2, b.y - bossH(b) - 3, 26, LEVELS[b.hp].c.rock, 150);
+    floater('CORRECT!', b.x + b.w / 2, b.y - bossH(b) - 16, '#8fbf7a');
+    b.qi++;
+    if (b.hp <= 0) { b.dead = 3; SFX.play('clear'); floater('ERODED!', b.x + b.w / 2, b.y - 30, '#f2c14e'); return; }
+    b.think = 2.5;
+  } else {
+    q.off[i] = true; SFX.play('wrong');
+    floater('WRONG!', pl.x + pl.w / 2, pl.y - 8, '#e2774a');
+    b.stomp = 0; b.think = 0;
+  }
+}
+function updateBoss(dt) {
+  const b = boss;
+  if (!b) return;
+  b.t += dt;
+  if (b.flash > 0) b.flash -= dt;
+  if (b.dead > 0) {
+    // the golem erodes into sand
+    b.dead -= dt;
+    for (let i = 0; i < 3; i++) particles.push({ x: b.x + rand(0, b.w), y: b.y - rand(0, 14), vx: rand(-50, 50), vy: rand(-80, -10), life: 1.2, max: 1.2, color: LEVELS[Math.floor(rand(0, LAYERS))].c.rock, size: 2, g: 260 });
+    if (b.dead <= 0) { boss = null; showEnd(true); }
+    return;
+  }
+  if (b.think > 0) b.think -= dt;
+  if (b.stun > 0) b.stun -= dt;
+  else if (b.stagger > 0) b.stagger -= dt;
+  else if (b.think <= 0 || b.air) {
+    if (!b.air) {
+      const speed = 34 + (6 - b.hp) * 9;
+      b.vx = approach(b.vx, (Math.sign(pl.x - b.x) || 1) * speed, 140 * dt);
+      b.stomp -= dt;
+      if (b.stomp <= 0) { b.air = true; b.vy = -320; b.stomp = rand(3, 4.5) - (6 - b.hp) * 0.3; SFX.play('jump'); }
+    }
+    b.x = clamp(b.x + b.vx * dt, 2 * T, (mapW - 2) * T - b.w);
+  }
+  if (b.air) {
+    b.vy += 900 * dt; b.y += b.vy * dt;
+    if (b.y >= 16 * T) {
+      // landing shakes rocks loose from the cliffs
+      b.y = 16 * T; b.air = false; shakeT = 0.35; SFX.play('boulder');
+      burst(b.x + b.w / 2, b.y, 16, '#c99a7c', 110);
+      const n = 2 + Math.floor((6 - b.hp) / 2);
+      for (let i = 0; i < n; i++) rocks.push({ x: clamp(pl.x + pl.w / 2 + rand(-60, 60), 3 * T, (mapW - 3) * T), y: camY - 10, vy: 0, warn: 0.8 + i * 0.3, r: 4 });
+    }
+  }
+  const top = b.y - bossH(b);
+  if (pl.dead <= 0 && pl.x + pl.w > b.x + 2 && pl.x < b.x + b.w - 2 && pl.y + pl.h > top && pl.y < b.y) {
+    if (pl.vy > 0 && pl.y + pl.h - top < 8) { pl.vy = -300; pl.canCut = false; SFX.play('bump'); floater('TOO HARD!', b.x + b.w / 2, top - 6, '#f3e6d6'); }
+    else hurtPlayer();
+  }
+}
+function drawBoss() {
+  const b = boss;
+  if (!b || (b.dead > 0 && Math.floor(b.dead * 12) % 2)) return;
+  const h = bossH(b), x = Math.round(b.x), base = Math.round(b.y), face = pl.x < b.x ? -1 : 1;
+  const step = b.air ? 0 : (Math.floor(b.t * 6) % 2) * 2;
+  ctx.fillStyle = '#5a4436';
+  ctx.fillRect(x + 3, base - 10 + step, 8, 10 - step); ctx.fillRect(x + b.w - 11, base - 8 - step, 8, 8 + step);
+  // body: one band per rock layer still standing, oldest (Moenkopi) at the bottom
+  for (let k = 0; k < b.hp; k++) {
+    const c = LEVELS[k].c, y = base - 10 - (k + 1) * 5;
+    ctx.fillStyle = c.rock; ctx.fillRect(x, y, b.w, 5);
+    ctx.fillStyle = c.line; ctx.fillRect(x + 1, y + 2, b.w - 2, 1);
+    ctx.fillStyle = c.dark; ctx.fillRect(x, y + 4, b.w, 1);
+  }
+  const armY = base - h + 6, swing = Math.round(Math.sin(b.t * 5) * 2);
+  ctx.fillStyle = '#6e5444'; ctx.fillRect(x - 6, armY + swing, 6, 10); ctx.fillRect(x + b.w, armY - swing, 6, 10);
+  const ex = x + Math.round(b.w / 2) + face * 4, ey = base - h + 1;
+  ctx.fillStyle = b.stun > 0 ? '#ffffff' : '#ffdf5a';
+  if (b.stun > 0) { ctx.fillRect(ex - 6, ey + 1, 3, 1); ctx.fillRect(ex + 2, ey + 1, 3, 1); }
+  else { ctx.fillRect(ex - 6, ey, 3, 3); ctx.fillRect(ex + 2, ey, 3, 3); }
+  if (b.flash > 0 && Math.floor(b.flash * 20) % 2) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x - 6, base - h, b.w + 12, h); }
+  if (b.think > 0 && b.stun <= 0 && b.dead <= 0) pixelText('...', x + b.w / 2, base - h - 6, '#f3e6d6', 8, 'center');
+}
+function drawBossPanel() {
+  const b = boss;
+  if (!b || b.dead > 0 || !b.qs[b.qi]) return;
+  const q = b.qs[b.qi];
+  ctx.font = '16px VT323, monospace'; ctx.textAlign = 'left';
+  const lines = wrapText(`Q${b.qi + 1} of 6.  ${q.text}`, 470);
+  const h = (lines.length + 4) * 12 + 10;
+  ctx.fillStyle = '#f3e6d6'; ctx.fillRect(10, 26, VW - 20, h + 4);
+  ctx.fillStyle = '#1d1411'; ctx.fillRect(12, 28, VW - 24, h);
+  ctx.fillStyle = '#f2c14e'; lines.forEach((l, i) => ctx.fillText(l, 20, 40 + i * 12));
+  q.choices.forEach((c, i) => {
+    ctx.fillStyle = q.off[i] ? '#6a5446' : '#f3e6d6';
+    ctx.fillText(`${'ABCD'[i]})  ${c}${q.off[i] ? '   (wrong)' : ''}`, 26, 42 + (lines.length + i) * 12);
+  });
+}
+
+function updatePlatforms(dt) {
+  for (const p of platforms) {
+    p.t += dt;
+    const k = 0.5 - 0.5 * Math.cos(p.t * p.speed);
+    const nx = p.x0 + (p.axis === 'x' ? p.range * k : 0), ny = p.y0 - (p.axis === 'y' ? p.range * k : 0);
+    p.dx = nx - p.x; p.dy = ny - p.y; p.x = nx; p.y = ny;
+  }
+}
+
+function burst(x, y, n, color, speed = 90, g = 280) {
+  if (reduceMotion) n = Math.ceil(n / 3);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = rand(speed * 0.3, speed);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30, life: rand(0.4, 0.8), max: 0.8, color, size: Math.random() < 0.5 ? 1 : 2, g });
+  }
+}
+
+// ---------- update ----------
+function update(dt) {
+  levelTime += dt;
+  if (goalMsg > 0) goalMsg -= dt;
+  if (shakeT > 0) shakeT -= dt;
+  if (fadeT > 0) fadeT -= dt;
+  for (const f of floaters) { f.t -= dt; f.y -= 18 * dt; }
+  floaters = floaters.filter(f => f.t > 0);
+  for (const [k, b] of bumps) { if (b - dt <= 0) bumps.delete(k); else bumps.set(k, b - dt); }
+  updateHazards(dt);
+  updatePlatforms(dt);
+  updatePlayer(dt);
+  if (state !== 'play') return;
+  updateItems(dt);
+  updateShots(dt);
+  updateEnemies(dt);
+  updateRocks(dt);
+  updateCrumbles(dt);
+  for (const p of particles) { p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+  particles = particles.filter(p => p.life > 0);
+  const tx = clamp(pl.x + pl.w / 2 - VW * 0.42, 0, mapW * T - VW);
+  const ty = clamp(pl.y + pl.h / 2 - VH * 0.5, 0, ROWS * T - VH);
+  camX += (tx - camX) * Math.min(1, dt * 8);
+  camY += (ty - camY) * Math.min(1, dt * 6);
+}
+
+function updateHazards(dt) {
+  if (inBonus) { banner = null; return; }
+  hz.t += dt;
+  const m = L.mech;
+  if (m === 'tide') liquidY = 16.95 + 0.55 * Math.sin(levelTime * 0.9);
+  if (m === 'crumble' || m === 'rockfall') liquidY = 16.8 + 0.06 * Math.sin(levelTime * 2);
+  if (m === 'flood') {
+    const p = hz.t % 17, lo = 16.8, hi = 14.4;
+    if (p < 10) { liquidY = lo; banner = null; }
+    else if (p < 12.5) {
+      liquidY = lo; banner = 'FLASH FLOOD COMING! CLIMB UP HIGH';
+      if (hz.cue !== Math.floor(hz.t / 17)) { hz.cue = Math.floor(hz.t / 17); SFX.play('flood'); }
+    }
+    else if (p < 13.5) { liquidY = lo + (hi - lo) * (p - 12.5); banner = 'FLASH FLOOD!'; }
+    else if (p < 16) { liquidY = hi + 0.08 * Math.sin(levelTime * 5); banner = 'FLASH FLOOD!'; }
+    else { liquidY = hi + (lo - hi) * (p - 16); banner = null; }
+    // popcorn mud swells as the flood arrives and shrinks again once it drains
+    popWet = p >= 11 && p < 16.8;
+    if (popWet && pl.dead <= 0) {
+      const ty = Math.floor((pl.y + pl.h - 0.01) / T);
+      for (let tx = Math.floor(pl.x / T); tx <= Math.floor((pl.x + pl.w - 0.01) / T); tx++)
+        if (tileAt(tx, ty) === '.' && tileAt(tx, ty + 1) === 'p') { pl.y = ty * T - pl.h; pl.vy = Math.min(pl.vy, 0); }
+    }
+  }
+  if (m === 'wind') {
+    const p = hz.t % 13;
+    if (p < 6.5) { stormWarn = 0; storm = approach(storm, 0, dt * 0.8); banner = null; }
+    else if (p < 9) { stormWarn = (p - 6.5) / 2.5; storm = 0; banner = 'SANDSTORM ROLLING IN FROM THE EAST'; }
+    else {
+      stormWarn = 0; storm = approach(storm, 1, dt * 1.5); banner = 'SANDSTORM!';
+      if (hz.cue !== Math.floor(hz.t / 13)) { hz.cue = Math.floor(hz.t / 13); SFX.play('storm'); }
+    }
+    if (p > 12) storm = approach(storm, 0, dt * 2);
+    wind = -82 * storm;
+    // sand streaks and billows blown across the screen
+    const n = Math.round(storm * (reduceMotion ? 1 : 4));
+    for (let i = 0; i < n; i++) particles.push({ x: camX + VW + rand(0, 40), y: camY + rand(0, VH), vx: rand(-420, -300), vy: rand(-15, 25), life: 2, max: 2, color: Math.random() < 0.5 ? '#f3dcb0' : '#d7a86e', size: 1, len: Math.floor(rand(4, 14)), g: 0 });
+    if (storm > 0.3 && Math.random() < storm * 0.12) particles.push({ x: camX + VW + 30, y: camY + rand(80, VH - 10), vx: rand(-200, -140), vy: rand(-10, 10), life: 4, max: 4, color: 'rgba(214,160,100,0.35)', size: Math.floor(rand(18, 36)), puff: true, g: 0 });
+    if (storm > 0.4 && pl.onGround && Math.random() < 0.3) particles.push({ x: pl.x + pl.w, y: pl.y + pl.h - 1, vx: rand(-90, -50), vy: rand(-30, -10), life: 0.5, max: 0.5, color: L.c.top, size: 1, g: 60 });
+  }
+  if (m === 'boss') updateBoss(dt);
+  if (m === 'rockfall') {
+    rockTimer -= dt;
+    if (rockTimer <= 0 && levelTime > 2) {
+      rockTimer = rand(1.0, 2.0);
+      const x = clamp(pl.x + rand(-50, 160), 20, mapW * T - 30);
+      rocks.push({ x, y: camY - 10, vy: 0, warn: 0.95, r: 4 }); SFX.play('rockwarn');
+    }
+  }
+}
+
+function updatePlayer(dt) {
+  if (pl.dead > 0) {
+    pl.dead -= dt;
+    if (pl.dead <= 0) { if (lives <= 0) gameOver(); else respawn(); }
+    return;
+  }
+  if (pl.inv > 0) pl.inv -= dt;
+  if (pl.boots > 0) {
+    pl.boots -= dt;
+    if (Math.random() < 0.4) particles.push({ x: pl.x + rand(0, pl.w), y: pl.y + pl.h - 2, vx: 0, vy: rand(-20, -5), life: 0.4, max: 0.4, color: Math.random() < 0.5 ? '#f2c14e' : '#e2774a', size: 1, g: 0 });
+  }
+  const run = pl.boots > 0 ? 165 : RUN, jump = pl.boots > 0 ? -430 : JUMP;
+  if (pl.onPlat) { moveX(pl.onPlat.dx); pl.y += pl.onPlat.dy; }
+  const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  if (dir) pl.face = dir;
+  const ccx = Math.floor((pl.x + pl.w / 2) / T);
+  const wasSwim = pl.swim;
+  pl.swim = tileAt(ccx, Math.floor((pl.y + pl.h / 2) / T)) === 'w';
+  if (pl.swim && !wasSwim) SFX.play('splash');
+  if (input.jumpPressed) { pl.buffer = 0.13; input.jumpPressed = false; } else pl.buffer -= dt;
+  pl.coyote = pl.onGround ? 0.1 : pl.coyote - dt;
+
+  if (pl.swim) {
+    pl.vx = approach(pl.vx, dir * 80, 500 * dt);
+    pl.vy = Math.min(pl.vy + 190 * dt, 64);
+    if (pl.buffer > 0) {
+      const atSurface = tileAt(ccx, Math.floor((pl.y - 2) / T)) !== 'w';
+      pl.vy = atSurface ? -330 : -130; pl.buffer = 0; SFX.play('swim');
+      particles.push({ x: pl.x + pl.w / 2, y: pl.y, vx: rand(-6, 6), vy: -30, life: 1, max: 1, color: '#d8f0ff', size: 2, g: -20, bubble: true });
+    }
+  } else {
+    pl.vx = approach(pl.vx, dir * run + wind, (pl.onGround ? ACC_G : ACC_A) * dt);
+    if (pl.buffer > 0 && pl.coyote > 0) {
+      pl.vy = jump; pl.buffer = 0; pl.onPlat = null; SFX.play('jump'); pl.coyote = 0; pl.onGround = false; pl.canCut = true;
+      burst(pl.x + pl.w / 2, pl.y + pl.h, 4, L.c.top, 30, 150);
+    }
+    if (!keys.jump && pl.canCut && pl.vy < CUT) pl.vy = CUT;
+    if (pl.vy >= 0) pl.canCut = false;
+    pl.vy = Math.min(pl.vy + GRAV * dt, MAXFALL);
+  }
+
+  moveX(pl.vx * dt);
+  const prevBottom = pl.y + pl.h;
+  moveY(pl.vy * dt);
+  // moving platforms are one-way: land on them from above, jump up through them from below
+  pl.onPlat = null;
+  if (pl.vy >= 0 && !pl.swim) for (const p of platforms) {
+    if (pl.x + pl.w > p.x + 1 && pl.x < p.x + p.w - 1 && prevBottom <= p.y + 3 && pl.y + pl.h >= p.y) {
+      pl.y = p.y - pl.h; pl.vy = 0; pl.onGround = true; pl.onPlat = p; break;
+    }
+  }
+  if (pl.x < 0) { pl.x = 0; pl.vx = 0; }
+
+  if (input.hammerPressed) { input.hammerPressed = false; pl.hammer = 0.25; swingHammer(); if (inBonus) return; }
+  if (input.downPressed) { input.downPressed = false; if (tryDig()) return; }
+  if (pl.hammer > 0) pl.hammer -= dt;
+  pl.anim += Math.abs(pl.vx) * dt;
+
+  if (pl.y > ROWS * T + 10) killPlayer();
+  if (liquidY !== null && pl.y + pl.h > (liquidY + 0.3) * T) {
+    if (pl.dead <= 0 && pl.inv <= 0) burst(pl.x + pl.w / 2, liquidY * T, 10, L.c.liquidTop, 90);
+    killPlayer();
+  }
+
+  for (const n of notes) {
+    if (!n.got && Math.abs(n.x - (pl.x + pl.w / 2)) < 11 && Math.abs(n.y - (pl.y + pl.h / 2)) < 13) {
+      n.got = true; notesGot[levelIdx]++;
+      journal[levelIdx][n.idx] = true; saveJournal(); SFX.play('note');
+      floater('NOTE!', pl.x + pl.w / 2, pl.y - 4, '#f2c14e');
+      burst(n.x, n.y, 14, '#f2c14e', 90, 100);
+      pendingNote = n.idx;
+    }
+  }
+  // Open the note card only once the player is standing or swimming, so pausing never drops them into a pit.
+  if (pendingNote !== null && pl.dead <= 0 && (pl.onGround || pl.swim)) { const i = pendingNote; pendingNote = null; showNote(i); return; }
+
+  for (const c of checkpoints) {
+    if (!c.active && Math.abs(c.x - (pl.x + pl.w / 2)) < 10 && pl.y + pl.h > c.y - 28 && pl.y < c.y) {
+      c.active = true; respawnPt = { x: c.x - pl.w / 2, y: c.y - pl.h }; SFX.play('checkpoint');
+      burst(c.x, c.y - 22, 12, '#f2c14e', 70, 100);
+    }
+  }
+  if (inBonus && bonusExit && Math.abs(bonusExit.x + 8 - (pl.x + pl.w / 2)) < 9 && pl.y + pl.h > bonusExit.y) { exitBonus(); return; }
+  if (goal && Math.abs(goal.x - (pl.x + pl.w / 2)) < 10 && pl.y + pl.h > goal.y - 28) {
+    if (notesGot[levelIdx] >= 3) levelComplete(); else { if (goalMsg <= 0) SFX.play('blocked'); goalMsg = 0.3; }
+  }
+}
+
+function moveX(dx) {
+  pl.x += dx;
+  const y0 = Math.floor(pl.y / T), y1 = Math.floor((pl.y + pl.h - 0.01) / T);
+  if (dx > 0) {
+    const tx = Math.floor((pl.x + pl.w - 0.01) / T);
+    for (let ty = y0; ty <= y1; ty++) if (solid(tx, ty)) { pl.x = tx * T - pl.w; pl.vx = 0; break; }
+  } else if (dx < 0) {
+    const tx = Math.floor(pl.x / T);
+    for (let ty = y0; ty <= y1; ty++) if (solid(tx, ty)) { pl.x = (tx + 1) * T; pl.vx = 0; break; }
+  }
+}
+function moveY(dy) {
+  pl.y += dy;
+  pl.onGround = false;
+  const x0 = Math.floor(pl.x / T), x1 = Math.floor((pl.x + pl.w - 0.01) / T);
+  if (dy > 0) {
+    const ty = Math.floor((pl.y + pl.h - 0.01) / T);
+    for (let tx = x0; tx <= x1; tx++) if (solid(tx, ty)) {
+      pl.y = ty * T - pl.h; pl.vy = 0; pl.onGround = true;
+      for (let k = x0; k <= x1; k++) if (tileAt(k, ty) === 'x') {
+        const key = k + ',' + ty;
+        if (!crumbles.has(key)) crumbles.set(key, { t: 0.45, gone: false, back: 0, x: k, y: ty });
+      }
+      break;
+    }
+  } else if (dy < 0) {
+    const ty = Math.floor(pl.y / T), cx = Math.floor((pl.x + pl.w / 2) / T);
+    if (tileAt(cx, ty) === 'h') { bumpBlock(cx, ty); pl.y = (ty + 1) * T; pl.vy = 0; return; }
+    for (let tx = x0; tx <= x1; tx++) if (solid(tx, ty)) {
+      bumpBlock(solid(cx, ty) ? cx : tx, ty);
+      pl.y = (ty + 1) * T; pl.vy = 0; break;
+    }
+  }
+}
+
+// Cracked ground under (or right next to) the player's feet: dig through into the bonus cave.
+function digTile() {
+  if (inBonus || !pl.onGround) return -1;
+  const fy = Math.floor((pl.y + pl.h + 1) / T);
+  for (let dx = Math.floor((pl.x - 6) / T); dx <= Math.floor((pl.x + pl.w + 5) / T); dx++) if (tileAt(dx, fy) === 'd') return dx;
+  return -1;
+}
+function tryDig() {
+  const dx = digTile();
+  if (dx < 0) return false;
+  const fy = Math.floor((pl.y + pl.h + 1) / T);
+  for (let k = dx - 2; k <= dx + 3; k++) if (tileAt(k, fy) === 'd') grid[fy][k] = '#';
+  burst(pl.x + pl.w / 2, pl.y + pl.h, 16, L.c.top, 90);
+  enterBonus(digExits.find(z => z.x > dx * T) || { x: pl.x, y: pl.y });
+  return true;
+}
+function swingHammer() {
+  if (tryDig()) return;
+  const tx = pl.face > 0 ? Math.floor((pl.x + pl.w + 5) / T) : Math.floor((pl.x - 5) / T);
+  const y0 = Math.floor(pl.y / T) - 1, y1 = Math.floor((pl.y + pl.h - 0.01) / T);
+  let hit = false;
+  for (let ty = y0; ty <= y1; ty++) if (tileAt(tx, ty) === 'B') {
+    grid[ty][tx] = '.'; hit = true; SFX.play('boulder');
+    burst(tx * T + 8, ty * T + 8, 12, '#9b8c80', 110);
+  }
+  if (!hit && pl.geode) {
+    if (shots.length < 2) {
+      shots.push({ x: pl.x + pl.w / 2 + pl.face * 6, y: pl.y + 4, vx: pl.face * 230, vy: 40, t: 0 });
+      SFX.play('throw');
+    }
+    return;
+  }
+  const r0 = pl.face > 0 ? pl.x + pl.w : pl.x - 14, r1 = r0 + 14;
+  for (const e of enemies) if (e.alive && !e.still && !e.noStomp && e.x + e.w > r0 && e.x < r1 && e.y < pl.y + pl.h && e.y + e.h > pl.y - 4) {
+    e.alive = false; e.dieT = 0.4; hit = true; SFX.play('bonk');
+    burst(e.x + e.w / 2, e.y + e.h / 2, 10, '#f3e6d6', 90);
+    floater('BONK!', e.x + e.w / 2, e.y - 4, '#f3e6d6');
+  }
+  if (!hit) { burst(pl.x + pl.w / 2 + pl.face * 10, pl.y + 6, 3, '#f3e6d6', 30, 100); SFX.play('swing'); }
+}
+
+function updateCrumbles(dt) {
+  for (const [key, s] of crumbles) {
+    if (!s.gone) {
+      s.t -= dt;
+      if (s.t <= 0) { s.gone = true; s.back = 3; SFX.play('crumble'); burst(s.x * T + 8, s.y * T + 8, 8, '#c98a5c', 70); }
+    } else {
+      s.back -= dt;
+      const over = pl.x < (s.x + 1) * T && pl.x + pl.w > s.x * T && pl.y < (s.y + 1) * T && pl.y + pl.h > s.y * T;
+      if (s.back <= 0 && !over) crumbles.delete(key);
+    }
+  }
+}
+
+const clamOpen = e => e.t % 2.4 < 1.2;
+function updateEnemies(dt) {
+  for (const e of enemies) {
+    if (!e.alive) { e.dieT -= dt; continue; }
+    e.t += dt;
+    if (e.still) {
+      // clam: opens and shuts in place
+    } else if (e.water) {
+      const nx = e.x + e.vx * dt, front = e.vx > 0 ? nx + e.w : nx;
+      if (tileAt(Math.floor(front / T), Math.floor((e.by + e.h / 2) / T)) !== 'w') e.vx *= -1; else e.x = nx;
+      e.y = e.by + Math.sin(e.t * 2) * 5;
+    } else {
+      const nx = e.x + e.vx * dt, front = e.vx > 0 ? nx + e.w : nx;
+      const tx = Math.floor(front / T), ty = Math.floor((e.y + e.h / 2) / T), below = Math.floor((e.y + e.h + 1) / T);
+      if (solid(tx, ty) || !solid(tx, below)) e.vx *= -1; else e.x = nx;
+    }
+    if (pl.dead > 0) continue;
+    if (e.type === 'clam' && !clamOpen(e)) continue;
+    if (pl.x + pl.w > e.x + 1 && pl.x < e.x + e.w - 1 && pl.y + pl.h > e.y + 1 && pl.y < e.y + e.h) {
+      if (!e.still && !e.noStomp && pl.vy > 20 && pl.y + pl.h - e.y < 8) {
+        e.alive = false; e.dieT = 0.4; pl.vy = pl.swim ? -110 : -230; pl.canCut = false; SFX.play('stomp');
+        burst(e.x + e.w / 2, e.y + 3, 8, '#f3e6d6', 70);
+      } else hurtPlayer();
+    }
+  }
+}
+
+function updateRocks(dt) {
+  for (const r of rocks) {
+    if (r.warn > 0) { r.warn -= dt; continue; }
+    r.vy += 600 * dt; r.y += r.vy * dt;
+    if (solid(Math.floor(r.x / T), Math.floor((r.y + r.r) / T)) || r.y > ROWS * T) {
+      r.done = true; burst(r.x, r.y + r.r, 8, '#c99a7c', 80);
+      if (Math.abs(r.x - pl.x) < 220) SFX.play('rockhit');
+    }
+    const cx = clamp(r.x, pl.x, pl.x + pl.w), cy = clamp(r.y, pl.y, pl.y + pl.h);
+    if ((cx - r.x) ** 2 + (cy - r.y) ** 2 < r.r * r.r) { hurtPlayer(); r.done = true; }
+  }
+  rocks = rocks.filter(r => !r.done);
+}
+
+// ---------- drawing ----------
+function lerpColor(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = s => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+function ridgeH(x, seed, kind) {
+  const f = 0.5 + 0.5 * (0.6 * Math.sin(x * 0.0084 + seed) + 0.3 * Math.sin(x * 0.022 + seed * 2.1) + 0.1 * Math.sin(x * 0.066 + seed * 3.7));
+  if (kind === 'mesa' || kind === 'canyon') return clamp(f * 1.7 - 0.35, 0, 1);
+  if (kind === 'dunes') return Math.pow(0.5 + 0.5 * Math.sin(x * 0.012 + seed + Math.sin(x * 0.0042) * 2), 1.6);
+  return f;
+}
+function drawBackground(lv, cx, cy) {
+  const c = lv.c;
+  // stepped sky bands, the way 8-bit hardware faked a gradient
+  const bandH = [70, 60, 60, VH];
+  let y = 0;
+  for (let i = 0; i < 4; i++) { ctx.fillStyle = c.sky[i]; ctx.fillRect(0, y, VW, bandH[i]); y += bandH[i]; }
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = c.sky[i + 1]; for (let x = (i % 2) * 2; x < VW; x += 4) ctx.fillRect(x, [70, 130, 190][i] - 2, 2, 2); }
+  // pixel sun
+  ctx.fillStyle = '#fff3cf';
+  const sx = 420, sy = 38;
+  for (let dy = -10; dy <= 10; dy++) { const w = Math.round(Math.sqrt(100 - dy * dy)); ctx.fillRect(sx - w, sy + dy, w * 2, 1); }
+  // clouds
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i < 4; i++) {
+    const x = Math.round(((i * 170 - cx * 0.08 + time * 4) % (VW + 80) + VW + 80) % (VW + 80) - 60), yy = 24 + i * 13;
+    ctx.fillRect(x, yy, 34, 6); ctx.fillRect(x + 6, yy - 4, 18, 4); ctx.fillRect(x + 12, yy - 7, 8, 3);
+  }
+  const amps = lv.ridge === 'canyon' ? [150, 120] : lv.ridge === 'mesa' ? [90, 65] : lv.ridge === 'dunes' ? [46, 36] : [36, 26];
+  // canyon cliffs: red lower walls with pale upper Navajo sandstone on top, the way Zion's cliffs look
+  const layer = (col, top, par, base, amp, seed) => {
+    const by = base - cy * 0.5;
+    for (let x = 0; x < VW; x += 2) {
+      const h = Math.round(amp * ridgeH(x + Math.round(cx * par), seed, lv.ridge) / 2) * 2;
+      ctx.fillStyle = col; ctx.fillRect(x, Math.round(by - h), 2, VH + h);
+      if (top && h > 8) {
+        const cap = Math.round(h * 0.35 / 2) * 2;
+        ctx.fillStyle = top; ctx.fillRect(x, Math.round(by - h), 2, cap);
+        if ((x / 2) % 2 === 0) ctx.fillRect(x, Math.round(by - h) + cap, 2, 2);
+      }
+    }
+  };
+  layer(c.far, c.farTop, 0.15, 200, amps[0], 1.3);
+  layer(c.mid, c.midTop, 0.35, 236, amps[1], 4.1);
+}
+
+function drawTiles() {
+  const c = L.c;
+  const x0 = Math.max(0, Math.floor(camX / T)), x1 = Math.min(mapW - 1, Math.ceil((camX + VW) / T));
+  const y0 = Math.max(0, Math.floor(camY / T)), y1 = Math.min(ROWS - 1, Math.ceil((camY + VH) / T));
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const t = grid[ty][tx], x = tx * T, y = ty * T;
+    if (t === 'w') {
+      const d = clamp(Math.floor((ty - 16) / 3), 0, 3);
+      ctx.fillStyle = c.water[d]; ctx.fillRect(x, y, T, T);
+      if (tileAt(tx, ty - 1) !== 'w' && !solid(tx, ty - 1)) {
+        ctx.fillStyle = c.waterTop;
+        const ph = Math.floor(time * 4 + tx) % 2;
+        ctx.fillRect(x, y, T, 2); ctx.fillRect(x + (ph ? 2 : 9), y + 2, 4, 1);
+      }
+    } else if (t === '#') {
+      const v = (tx * 7 + ty * 13) % 3;
+      const open = !solid(tx, ty - 1) && tileAt(tx, ty - 1) !== 'w';
+      ctx.drawImage(open ? TILES.top[v] : TILES.rock[v], x, y);
+      // Navajo sandstone: bleached white near the top of the cliffs, red lower down
+      if (L.bleach) {
+        const a = ty <= 12 ? 0.45 : ty <= 14 ? 0.25 : ty === 15 ? 0.1 : 0;
+        if (a) { ctx.fillStyle = `rgba(255,246,232,${a})`; ctx.fillRect(x, y, T, T); }
+        else if (ty >= 17) { ctx.fillStyle = 'rgba(160,50,30,0.18)'; ctx.fillRect(x, y, T, T); }
+      }
+      if (open && L.tracks && hash(tx, ty, 9) > 0.8) drawTrack(x + 4, y + 6, L.tracks);
+    } else if (t === '=') {
+      if (L.platform === 'log') ctx.drawImage(tileAt(tx + 1, ty) === '=' ? TILES.log : TILES.logEnd, x, y);
+      else { ctx.drawImage(TILES.ledge, x, y); if (L.platform === 'track') drawTrack(x + 4, y + 7, 'big'); }
+    } else if (t === 'd') {
+      ctx.drawImage(TILES.top[0], x, y);
+      ctx.fillStyle = 'rgba(42,26,16,0.35)'; ctx.fillRect(x, y + 3, T, T - 3);
+      ctx.fillStyle = '#2a1a10';
+      [[3, 4], [4, 5], [5, 6], [5, 7], [6, 8], [7, 9], [10, 4], [9, 5], [9, 6], [10, 7], [11, 8], [11, 9], [12, 10], [7, 11], [8, 12]].forEach(([a, b]) => ctx.fillRect(x + a, y + b, 1, 1));
+      if (Math.floor(time * 2 + tx) % 4 === 0) { ctx.fillStyle = '#fff3cf'; ctx.fillRect(x + 8, y + 1, 1, 1); }
+    } else if (t >= '1' && t <= '4') {
+      const i = +t - 1, bb = bumps.get(tx + ',' + ty) || 0, lift = bb > 0 ? Math.round(Math.sin((bb / 0.15) * Math.PI) * 4) : 0;
+      const off = boss && boss.qs[boss.qi] && boss.qs[boss.qi].off[i];
+      ctx.fillStyle = '#3b2a20'; ctx.fillRect(x, y - lift, T, T);
+      ctx.fillStyle = off ? '#6e5640' : (Math.floor(time * 3) % 3 === 0 ? '#f2c14e' : '#e9d3a0'); ctx.fillRect(x + 1, y + 1 - lift, T - 2, T - 2);
+      ctx.fillStyle = off ? '#3b2a20' : '#120c0a'; ctx.font = '8px "Press Start 2P", monospace'; ctx.textAlign = 'center';
+      ctx.fillText('ABCD'[i], x + 8, y + 12 - lift);
+    } else if (t === 'p') {
+      ctx.drawImage(popWet ? TILES.popWet : TILES.popDry, x, y);
+      if (popWet && tileAt(tx, ty - 1) === '.') ctx.drawImage(TILES.popTop, x, y - T);
+    } else if (t === 'B') {
+      ctx.drawImage(TILES.boulder, x, y);
+    } else if (t === 'Q' || t === 'P' || t === 'u') {
+      const b = bumps.get(tx + ',' + ty) || 0;
+      const lift = b > 0 ? Math.round(Math.sin((b / 0.15) * Math.PI) * 4) : 0;
+      ctx.drawImage(t === 'u' ? USED_BLOCK : QBLOCK[Math.floor(time * 3) % 3 === 0 ? 1 : 0], x, y - lift);
+    } else if (t === 'x') {
+      const s = crumbles.get(tx + ',' + ty);
+      if (s && s.gone) continue;
+      ctx.drawImage(TILES.crumble, x + (s ? (Math.floor(time * 30) % 2 ? 1 : -1) : 0), y);
+    }
+  }
+}
+
+// fossil footprints pressed into the mud: three-toed dinosaur ('big') or small reptile ('small')
+function drawTrack(x, y, kind) {
+  ctx.fillStyle = 'rgba(40,20,10,0.5)';
+  if (kind === 'big') { ctx.fillRect(x + 2, y + 3, 4, 3); ctx.fillRect(x, y, 1, 3); ctx.fillRect(x + 3, y - 1, 2, 4); ctx.fillRect(x + 7, y, 1, 3); }
+  else { for (let i = 0; i < 4; i++) ctx.fillRect(x + i * 2, y + (i % 2), 1, 2); ctx.fillRect(x + 1, y + 3, 5, 2); }
+}
+
+function drawLiquid() {
+  if (liquidY === null) return;
+  const y = Math.round(liquidY * T), x0 = Math.floor(camX / 4) * 4;
+  ctx.fillStyle = L.c.liquid; ctx.fillRect(x0, y + 2, VW + 8, ROWS * T - y + 20);
+  ctx.fillStyle = L.c.liquidTop;
+  for (let x = x0; x < x0 + VW + 8; x += 4) {
+    const yy = y + (Math.floor((x / 4 + time * 6)) % 4 < 2 ? 0 : 1);
+    ctx.fillRect(x, yy, 4, 2);
+  }
+}
+
+function drawSprite(img, x, y, flip) {
+  x = Math.round(x); y = Math.round(y);
+  if (flip) { ctx.save(); ctx.translate(x + img.width, y); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0); ctx.restore(); }
+  else ctx.drawImage(img, x, y);
+}
+
+function drawPlayer() {
+  if (pl.dead > 0) return;
+  if (pl.inv > 0 && Math.floor(time * 12) % 2 === 0) return;
+  let frame = 'stand';
+  if (pl.swim) frame = Math.floor(time * 4) % 2 ? 'run1' : 'jump';
+  else if (!pl.onGround) frame = 'jump';
+  else if (Math.abs(pl.vx) > 15) frame = Math.floor(pl.anim / 9) % 2 ? 'run1' : 'run2';
+  const img = heroSet()[frame], flip = pl.face < 0;
+  const sx = pl.x + pl.w / 2 - img.width / 2, sy = pl.y + pl.h - img.height;
+  drawSprite(img, sx, sy, flip);
+  const swinging = pl.hammer > 0.12;
+  const hm = swinging ? HAMMER.up : HAMMER.down;
+  const hx = flip ? sx - hm.width + 3 : sx + img.width - 3;
+  drawSprite(hm, hx, sy + (swinging ? 1 : 8), flip);
+}
+
+function drawItems() {
+  for (const it of items) {
+    const img = ITEM_IMG[it.type];
+    const bob = it.rise > 0 || it.pop !== undefined ? 0 : Math.floor(time * 3 + it.x) % 2;
+    if (it.type === 'crystal' && it.pop === undefined && Math.floor(time * 5 + it.x / 16) % 6 === 0) {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(it.x + 6), Math.round(it.y - 1), 1, 1);
+    }
+    if (it.rise > 0) {
+      // still emerging from the block: only draw the part above the block top
+      const top = Math.round(it.y), visible = img.height - Math.ceil(it.rise);
+      if (visible > 0) ctx.drawImage(img, 0, 0, img.width, visible, Math.round(it.x), top, img.width, visible);
+    } else ctx.drawImage(img, Math.round(it.x), Math.round(it.y) - bob);
+  }
+  for (const p of platforms) {
+    const x = Math.round(p.x), y = Math.round(p.y);
+    if (p.axis === 'y') { ctx.fillStyle = '#4a3220'; ctx.fillRect(x + 6, y - 200, 1, 200); ctx.fillRect(x + p.w - 7, y - 200, 1, 200); }
+    ctx.fillStyle = '#3e2a18'; ctx.fillRect(x, y, p.w, 6);
+    ctx.fillStyle = '#8b6a45'; ctx.fillRect(x + 1, y, p.w - 2, 4);
+    ctx.fillStyle = '#b08a5a'; ctx.fillRect(x + 1, y, p.w - 2, 1);
+    ctx.fillStyle = '#5a3d24'; for (let i = 15; i < p.w; i += 16) ctx.fillRect(x + i, y + 1, 1, 3);
+  }
+}
+
+function drawFloaters() {
+  for (const f of floaters) pixelText(f.text, Math.round(f.x), Math.round(f.y), f.color, 8, 'center');
+}
+
+function drawEnemy(e) {
+  if (e.x + 30 < camX || e.x - 30 > camX + VW) return;
+  if (!e.alive && Math.floor(e.dieT * 20) % 2) return;
+  if (e.type === 'clam') { drawSprite(CLAM[clamOpen(e) ? 1 : 0], e.x, e.y, false); return; }
+  if (e.type === 'devil') {
+    // a twisting column of sand pixels, wider at the top
+    for (let i = 0; i < 18; i++) {
+      const yy = Math.round(e.y + e.h - 1 - i), half = 1 + Math.floor(i / 3);
+      const cx = Math.round(e.x + e.w / 2 + Math.sin(e.t * 9 + i * 0.5) * 2);
+      ctx.fillStyle = i % 2 ? '#3d2210' : '#7a3f1c';
+      ctx.fillRect(cx - half - 1, yy, 2, 1); ctx.fillRect(cx + half, yy, 2, 1);
+      if ((i + Math.floor(e.t * 12)) % 3 === 0) ctx.fillRect(cx - half + 1 + (i * 7 + Math.floor(e.t * 20)) % Math.max(1, half * 2 - 1), yy, 1, 1);
+    }
+    ctx.fillStyle = 'rgba(40,20,10,0.4)'; ctx.fillRect(Math.round(e.x - 3), Math.round(e.y + e.h - 1), e.w + 6, 2);
+    return;
+  }
+  const A = ANIMALS[e.type];
+  const img = A.img[Math.floor(e.t * 6) % 2];
+  const x = e.x + e.w / 2 - img.width / 2, y = e.y + e.h - img.height;
+  if (!e.alive) { ctx.save(); ctx.translate(0, y + img.height); ctx.scale(1, 0.4); drawSprite(img, x, -img.height, e.vx > 0 ? false : true); ctx.restore(); return; }
+  drawSprite(img, x, y, e.vx < 0);
+}
+
+function drawProps() {
+  for (const c of checkpoints) {
+    const x = Math.round(c.x), y = c.y;
+    ctx.fillStyle = '#5b4636'; ctx.fillRect(x - 1, y - 28, 2, 28);
+    ctx.fillStyle = c.active ? '#f2c14e' : '#8c7c6c';
+    const wave = Math.floor(time * 4) % 2;
+    ctx.fillRect(x + 1, y - 28, 10, 3); ctx.fillRect(x + 1, y - 25, 8 + wave, 3); ctx.fillRect(x + 1, y - 22, 5, 2);
+  }
+  ctx.textAlign = 'center';
+  for (const s of signs) {
+    const x = Math.round(s.x), y = s.y;
+    ctx.fillStyle = '#4a3220'; ctx.fillRect(x - 1, y - 16, 2, 16);
+    ctx.fillStyle = '#8b6a45'; ctx.fillRect(x - 8, y - 20, 16, 10);
+    ctx.fillStyle = '#5b4030'; ctx.fillRect(x - 8, y - 11, 16, 1);
+    ctx.fillStyle = '#f3e6d6'; ctx.fillRect(x - 1, y - 18, 3, 1); ctx.fillRect(x + 1, y - 17, 1, 2); ctx.fillRect(x, y - 15, 1, 1); ctx.fillRect(x, y - 13, 1, 1);
+  }
+  if (!inBonus) for (const d of digSites) {
+    if (tileAt(d.tx, d.ty) !== 'd') continue;
+    // bouncing arrow over the dig site
+    const ay = d.y - 26 + (Math.floor(time * 3) % 2) * 3;
+    ctx.fillStyle = '#f2c14e';
+    ctx.fillRect(d.x - 1, ay, 3, 5);
+    for (let i = 0; i < 4; i++) ctx.fillRect(d.x - 3 + i, ay + 5 + i, 7 - i * 2, 1);
+    pixelText('DIG', d.x + 1, ay - 3, '#f2c14e', 6, 'center');
+  }
+  for (const z of digExits) {
+    // burrow where the cave tunnel comes back up
+    const x = Math.round(z.x + pl.w / 2), y = Math.round(z.y + pl.h);
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - 7, y - 2, 14, 2); ctx.fillRect(x - 5, y - 4, 10, 2);
+    ctx.fillStyle = L.c.topDark; ctx.fillRect(x - 9, y - 2, 2, 2); ctx.fillRect(x + 7, y - 2, 2, 2);
+  }
+  if (inBonus && bonusExit) {
+    const x = bonusExit.x, top = T, bottom = bonusExit.y + T;
+    ctx.fillStyle = '#8b6a45'; ctx.fillRect(x + 3, top, 1, bottom - top); ctx.fillRect(x + 12, top, 1, bottom - top);
+    for (let y = top + 3; y < bottom; y += 5) ctx.fillRect(x + 3, y, 10, 1);
+    pixelText('EXIT', x + 8, bonusExit.y - 30, '#f2c14e', 8, 'center');
+  }
+  if (goal) {
+    const x = Math.round(goal.x), y = goal.y;
+    ctx.fillStyle = '#4a3220'; ctx.fillRect(x - 2, y - 34, 4, 34);
+    ctx.fillStyle = '#6e4f33'; ctx.fillRect(x - 32, y - 44, 64, 16);
+    ctx.fillStyle = '#e8d5b0'; ctx.fillRect(x - 31, y - 43, 62, 1); ctx.fillRect(x - 31, y - 30, 62, 1);
+    ctx.fillStyle = '#f3e6d6'; ctx.font = '6px "Press Start 2P", monospace';
+    ctx.fillText(levelIdx === LAYERS - 1 ? 'FINAL LEVEL' : 'NEXT LAYER', x, y - 33);
+  }
+  for (const n of notes) {
+    if (n.got) continue;
+    const bob = Math.floor(time * 3 + n.idx) % 2;
+    if (Math.floor(time * 6) % 3 === 0) { ctx.fillStyle = '#fff3cf'; ctx.fillRect(n.x - 7, n.y - 7 + bob, 1, 1); ctx.fillRect(n.x + 6, n.y - 5 + bob, 1, 1); ctx.fillRect(n.x + 5, n.y + 6 + bob, 1, 1); }
+    ctx.drawImage(NOTE_IMG, Math.round(n.x - 4), Math.round(n.y - 5 + bob));
+  }
+}
+
+function drawSignBubbles() {
+  for (const s of signs) if (Math.abs(pl.x + pl.w / 2 - s.x) < 60 && pl.dead <= 0) bubble(s.x - camX, s.y - 24 - camY, s.text);
+}
+function wrapText(text, maxW) {
+  const words = text.split(' '), lines = []; let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  return lines;
+}
+function bubble(x, y, text) {
+  ctx.font = '16px VT323, monospace';
+  const lines = wrapText(text, 170);
+  const w = Math.ceil(Math.max(...lines.map(l => ctx.measureText(l).width))) + 14, h = lines.length * 12 + 8;
+  const bx = Math.round(clamp(x - w / 2, 4, VW - w - 4)), by = Math.round(y - h);
+  ctx.fillStyle = '#f3e6d6'; ctx.fillRect(bx - 2, by - 2, w + 4, h + 4);
+  ctx.fillStyle = '#1d1411'; ctx.fillRect(bx, by, w, h);
+  ctx.fillStyle = '#f3e6d6'; ctx.textAlign = 'left';
+  lines.forEach((l, i) => ctx.fillText(l, bx + 7, by + 12 + i * 12));
+}
+
+function drawRocks() {
+  for (const r of rocks) {
+    if (r.warn > 0) {
+      let gy = ROWS * T; for (let ty = Math.floor(camY / T); ty < ROWS; ty++) if (solid(Math.floor(r.x / T), ty)) { gy = ty * T; break; }
+      if (Math.floor(time * 10) % 2) { ctx.fillStyle = 'rgba(30,15,10,0.55)'; ctx.fillRect(Math.round(r.x) - 6, gy - 2, 12, 2); }
+      const tx = Math.round(r.x), ty = Math.round(camY + (L.boss ? 122 : 26));
+      ctx.fillStyle = '#f2c14e';
+      for (let i = 0; i < 7; i++) ctx.fillRect(tx - i / 2 - 0.5 | 0, ty + i, i + 1, 1);
+      ctx.fillStyle = '#1d1411'; ctx.fillRect(tx, ty + 2, 1, 3); ctx.fillRect(tx, ty + 6, 1, 1);
+    } else ctx.drawImage(ROCK_IMG, Math.round(r.x - 4), Math.round(r.y - 4));
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const x = Math.round(p.x), y = Math.round(p.y);
+    if (p.puff) {
+      ctx.fillStyle = p.color;
+      const s = p.size;
+      ctx.fillRect(x - s, y - s / 2 | 0, s * 2, s); ctx.fillRect(x - s / 2 | 0, y - s, s, s * 2);
+      continue;
+    }
+    ctx.globalAlpha = p.len ? 0.9 : clamp(p.life / p.max, 0, 1);
+    ctx.fillStyle = p.color;
+    if (p.len) ctx.fillRect(x, y, p.len, 1);
+    else if (p.bubble) { ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y + 1, 1, 1); }
+    else ctx.fillRect(x, y, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Sandstorm screen treatment: a dust wall rolls in, then a dithered haze covers everything
+let ditherCanvas = null;
+function dither() {
+  if (ditherCanvas) return ditherCanvas;
+  ditherCanvas = document.createElement('canvas'); ditherCanvas.width = 4; ditherCanvas.height = 4;
+  const g = ditherCanvas.getContext('2d'); g.fillStyle = '#d9a46a';
+  g.fillRect(0, 0, 1, 1); g.fillRect(2, 2, 1, 1); g.fillRect(2, 0, 1, 1); g.fillRect(0, 2, 1, 1);
+  return ditherCanvas;
+}
+function drawStorm() {
+  if (L.mech !== 'wind') return;
+  if (stormWarn > 0) {
+    const edge = Math.round(VW - stormWarn * VW * 0.45);
+    for (let x = edge; x < VW; x += 2) {
+      const h = 120 + Math.round(30 * Math.sin(x * 0.07 + time * 5));
+      ctx.fillStyle = x < edge + 12 ? 'rgba(200,140,80,0.5)' : 'rgba(176,112,60,0.75)';
+      ctx.fillRect(x, VH - h - 30, 2, h + 30);
+    }
+  }
+  if (storm > 0.02) {
+    ctx.fillStyle = `rgba(214,160,96,${0.38 * storm})`; ctx.fillRect(0, 0, VW, VH);
+    ctx.globalAlpha = storm * 0.5;
+    ctx.fillStyle = ctx.createPattern(dither(), 'repeat');
+    ctx.save(); ctx.translate(-Math.floor(time * 60) % 4, 0); ctx.fillRect(0, 0, VW + 4, VH); ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function pixelText(text, x, y, color, size = 8, align = 'left') {
+  ctx.font = `${size}px "Press Start 2P", monospace`; ctx.textAlign = align;
+  ctx.fillStyle = '#000'; ctx.fillText(text, x + 1, y + 1);
+  ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+function drawHUD() {
+  ctx.fillStyle = 'rgba(18,12,10,0.8)'; ctx.fillRect(0, 0, VW, 22);
+  pixelText(L.boss ? 'BOSS' : `LV${levelIdx + 1}`, 6, 14, '#f2c14e');
+  pixelText(L.name.toUpperCase(), 38, 14, '#f3e6d6');
+  ctx.drawImage(ITEM_IMG.crystal, 200, 7);
+  pixelText(`x${String(crystals).padStart(2, '0')}`, 210, 14, '#f3e6d6');
+  const blink = goalMsg > 0 && Math.floor(time * 8) % 2;
+  if (L.boss) {
+    pixelText('GOLEM', 262, 14, '#e2774a');
+    for (let k = 0; k < LAYERS; k++) { ctx.fillStyle = boss && k < boss.hp ? LEVELS[k].c.rock : '#3a2c25'; ctx.fillRect(306 + k * 11, 6, 9, 10); }
+  } else pixelText('NOTES', 270, 14, blink ? '#e2774a' : '#f2c14e');
+  if (!L.boss) for (let i = 0; i < 3; i++) {
+    const got = notes[i]?.got, x = 314 + i * 12;
+    ctx.fillStyle = got ? '#f4ead6' : (blink ? '#e2774a' : '#4a3a30'); ctx.fillRect(x, 6, 8, 10);
+    if (got) { ctx.fillStyle = '#4f7a45'; ctx.fillRect(x, 6, 2, 10); }
+  }
+  ctx.drawImage(heroSet().stand, 0, 0, 12, 7, 452, 6, 12, 7);
+  pixelText(`x${lives}`, 466, 14, '#f3e6d6');
+  // active power-ups, shown under the bar
+  let px = 6;
+  if (pl.hat) { ctx.drawImage(ITEM_IMG.hat, px, 27); px += 16; }
+  if (pl.geode) { ctx.drawImage(ITEM_IMG.geode, px, 26); px += 14; }
+  if (pl.boots > 0 && (pl.boots > 3 || Math.floor(time * 6) % 2)) {
+    ctx.drawImage(ITEM_IMG.boots, px, 26);
+    ctx.fillStyle = '#e2774a'; ctx.fillRect(px, 34, Math.round(10 * pl.boots / BOOTS_TIME), 2);
+  }
+
+  // rock column: where this layer sits in the stack (oldest at the bottom)
+  const cx = VW - 14, top = 32, segH = 12;
+  ctx.fillStyle = 'rgba(18,12,10,0.8)'; ctx.fillRect(cx - 4, top - 3, 12, segH * 6 + 6);
+  for (let i = 0; i < LAYERS; i++) {
+    const y = top + (LAYERS - 1 - i) * segH;
+    ctx.fillStyle = i <= levelIdx ? (i === 5 ? '#3f73b4' : LEVELS[i].c.rock) : '#3a2c25';
+    ctx.fillRect(cx - 2, y, 8, segH - 1);
+    if (i === levelIdx && Math.floor(time * 3) % 2) { ctx.fillStyle = '#f2c14e'; ctx.fillRect(cx - 7, y + 3, 3, 5); }
+  }
+
+  if (banner) {
+    ctx.font = '8px "Press Start 2P", monospace';
+    const w = Math.ceil(ctx.measureText(banner).width) + 16;
+    if (Math.floor(time * 4) % 2 || banner.length > 14) {
+      ctx.fillStyle = '#f3e6d6'; ctx.fillRect(VW / 2 - w / 2 - 2, 30, w + 4, 18);
+      ctx.fillStyle = '#9c2f1c'; ctx.fillRect(VW / 2 - w / 2, 32, w, 14);
+      pixelText(banner, VW / 2, 43, '#fff3e6', 8, 'center');
+    }
+  }
+}
+
+function drawWorld() {
+  const shake = (storm > 0.5 || shakeT > 0) && !reduceMotion ? (Math.floor(time * 30) % 2) * (shakeT > 0 ? 2 : 1) : 0;
+  if (inBonus) drawCave(); else drawBackground(L, camX, camY);
+  ctx.save();
+  ctx.translate(-Math.round(camX) + shake, -Math.round(camY));
+  drawLiquid();
+  drawTiles();
+  drawProps();
+  drawItems();
+  for (const sh of shots) ctx.drawImage(SHOT_IMG[Math.floor(sh.t * 12) % 2], Math.round(sh.x - 2), Math.round(sh.y - 2));
+  for (const e of enemies) if (e.alive || e.dieT > 0) drawEnemy(e);
+  drawBoss();
+  drawPlayer();
+  drawRocks();
+  drawParticles();
+  drawFloaters();
+  ctx.restore();
+  if (!inBonus) drawStorm();
+  drawSignBubbles();
+  drawBossPanel();
+  if (!inBonus && pl.dead <= 0 && digTile() >= 0) bubble(pl.x + pl.w / 2 - camX, pl.y - 6 - camY, HAMMER_KEY === 'press X' ? 'Press X or DOWN to dig!' : 'Tap HAMMER to dig!');
+  if (goalMsg > 0 && goal) bubble(goal.x - camX, goal.y - 48 - camY, `Find all 3 field notes before you climb to the next layer. You have ${notesGot[levelIdx]} of 3.`);
+  drawHUD();
+  if (fadeT > 0) { ctx.fillStyle = `rgba(0,0,0,${clamp(fadeT / 0.5, 0, 1)})`; ctx.fillRect(0, 0, VW, VH); }
+}
+
+function drawCave() {
+  ctx.fillStyle = '#1a120f'; ctx.fillRect(0, 0, VW, VH);
+  ctx.fillStyle = '#2a1d17';
+  for (let i = 0; i < 16; i++) {
+    const x = i * 33 + (i * 13) % 11, h = 6 + (i * 7) % 16;
+    for (let k = 0; k < h; k += 2) ctx.fillRect(x + Math.floor(k / 3), 16 + k, Math.max(2, 10 - Math.floor(k / 1.6) * 1), 2);
+  }
+  for (let i = 0; i < 24; i++) if ((Math.floor(time * 2) + i) % 5 === 0) { ctx.fillStyle = '#b89ae0'; ctx.fillRect((i * 97) % VW, 30 + (i * 53) % 200, 1, 1); }
+}
+
+// Ending: a cross-section of every layer the player climbed, with the canyon cut through it.
+const crossTiles = {};
+function drawCrossSection() {
+  drawBackground(LEVELS[5], 0, 0);
+  const bands = [{ lv: 4, h: 14 }, { lv: 3, h: 70 }, { lv: 2, h: 34 }, { lv: 1, h: 30 }, { lv: 0, h: 30 }];
+  let y = 104;
+  for (const b of bands) {
+    const tiles = crossTiles[b.lv] || (crossTiles[b.lv] = makeTiles(LEVELS[b.lv]));
+    ctx.fillStyle = ctx.createPattern(tiles.rock[0], 'repeat');
+    ctx.save(); ctx.translate(0, y); ctx.fillRect(0, 0, VW, b.h); ctx.restore();
+    b.y = y; y += b.h;
+  }
+  ctx.fillStyle = '#5e3a26'; ctx.fillRect(0, y, VW, VH - y);
+  // canyon notch, stepped like pixel cliffs
+  const cx = 330, floor = y - 10;
+  const sky = LEVELS[5].c.sky;
+  for (let yy = 104; yy < floor; yy += 2) {
+    const half = Math.round(18 + Math.max(0, (floor - yy)) * 0.32 + (yy < 120 ? (120 - yy) * 2 : 0));
+    ctx.fillStyle = yy < 130 ? sky[2] : sky[3];
+    ctx.fillRect(cx - half, yy, half * 2, 2);
+  }
+  ctx.fillStyle = LEVELS[5].c.liquid; ctx.fillRect(cx - 18, floor - 4, 36, 4);
+  ctx.fillStyle = LEVELS[5].c.liquidTop; ctx.fillRect(cx - 18, floor - 4, 36, 1);
+  ctx.font = '16px VT323, monospace';
+  for (const b of bands) {
+    const lv = LEVELS[b.lv], label = `${b.lv + 1}  ${lv.formation}`;
+    const w = Math.ceil(ctx.measureText(label).width) + 10;
+    ctx.fillStyle = 'rgba(18,12,10,0.82)'; ctx.fillRect(8, b.y + b.h / 2 - 7, w, 13);
+    ctx.fillStyle = '#f3e6d6'; ctx.textAlign = 'left'; ctx.fillText(label, 13, b.y + b.h / 2 + 4);
+  }
+  const lab = ['6  Running water', '   carves the canyon'];
+  const lw = Math.ceil(Math.max(...lab.map(l => ctx.measureText(l).width))) + 10;
+  const lx = Math.min(cx + 26, VW - lw - 6), ly = floor - 30;
+  ctx.fillStyle = 'rgba(18,12,10,0.82)'; ctx.fillRect(lx, ly, lw, 25);
+  ctx.fillStyle = '#f3e6d6';
+  lab.forEach((l, i) => ctx.fillText(l, lx + 5, ly + 11 + i * 11));
+  drawSprite(HERO.stand, cx + 90, 104 - 16, true);
+}
+
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  if (state === 'title') { drawBackground(LEVELS[5], time * 30, 0); return; }
+  if (state === 'end') { drawCrossSection(); return; }
+  drawWorld();
+}
+
+// ---------- screens ----------
+let primary = null, lastCard = null;
+function showCard(html, handlers = {}, remember = true) {
+  if (remember) lastCard = { html, handlers };
+  overlay.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`;
+  overlay.hidden = false;
+  overlay.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => handlers[b.dataset.act]?.(b)));
+  primary = handlers.primary || null;
+  const f = overlay.querySelector('[data-act="primary"]') || overlay.querySelector('button');
+  f && f.focus({ preventScroll: true });
+}
+function hideCard() {
+  overlay.hidden = true; overlay.innerHTML = ''; primary = null;
+  for (const k in keys) keys[k] = false;
+  input.jumpPressed = false; input.hammerPressed = false; input.downPressed = false;
+  document.querySelectorAll('.touch button').forEach(b => b.classList.remove('on'));
+}
+
+function showTitle() {
+  state = 'title';
+  SFX.music('title');
+  showCard(`
+    <p class="eyebrow">A geology platformer</p>
+    <h2>Layers of Zion</h2>
+    <p>Climb up through the rock layers of Zion National Park, from Triassic tidal flats to the carving of the canyon. Find all three field notes to unlock each next layer.</p>
+    <p class="rule">Each level hides 3 field notes. You must find all 3 before the exit sign lets you climb to the next layer.</p>
+    <p>Jump up into fossil blocks for crystals, hard hats, geodes to throw, and trail boots. Some blocks are hidden. Your rock hammer breaks boulders, bonks animals, and digs through cracked ground into hidden caves (look for the DIG arrow). Press N anytime to reread the notes you've found.</p>
+    <ul class="keys">
+      <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd></li><li>Move</li>
+      <li><kbd>SPACE</kbd></li><li>Jump (hold for higher) and swim</li>
+      <li><kbd>X</kbd></li><li>Swing the rock hammer</li>
+      <li><kbd>N</kbd></li><li>Open your field notebook</li>
+      <li><kbd>P</kbd></li><li>Pause</li>
+    </ul>
+    <div class="row"><button class="btn" data-act="primary">START</button></div>`,
+    { primary: () => { lives = START_LIVES; crystals = 0; deaths = 0; startLevel(0); } });
+}
+
+function startLevel(i) {
+  if (lives <= 0) lives = START_LIVES;
+  buildLevel(i);
+  state = 'intro';
+  SFX.music(L.boss ? 'boss' : 'l' + (i + 1));
+  updateLevelButtons();
+  showCard(`
+    <p class="eyebrow">${L.boss ? 'Final level' : `World ${i + 1} of ${LAYERS}`}</p>
+    <h2>${esc(L.name)}</h2>
+    <dl class="facts">
+      <dt>Layer</dt><dd>${esc(L.formation)}</dd>
+      <dt>When</dt><dd>${esc(L.age)}</dd>
+      <dt>Setting</dt><dd>${esc(L.env)}</dd>
+    </dl>
+    <p>${esc(L.hint)}</p>
+    ${L.boss ? '' : '<p class="rule">Find all 3 field notes to unlock the exit.</p>'}
+    <div class="row"><button class="btn" data-act="primary">START LEVEL</button></div>`,
+    { primary: () => { hideCard(); state = 'play'; } });
+}
+
+function showNote(idx) {
+  state = 'note';
+  pl.vx = 0;
+  const n = FIELD_NOTES[levelIdx + 1]?.[idx] || {};
+  const body = (n.text ? `<p>${esc(n.text)}</p>` : `<p class="placeholder">This field note hasn't been written yet. It will be filled in from the research.</p>`)
+    + (n.src ? `<p class="src">Source: ${esc(SRC[n.src])}</p>` : '');
+  showCard(`
+    <p class="eyebrow">Field note ${idx + 1} of 3 · ${esc(L.formation)}</p>
+    <h2>${esc(n.title || 'Field note ' + (idx + 1))}</h2>
+    ${body}
+    <div class="row"><button class="btn" data-act="primary">KEEP EXPLORING</button></div>`,
+    { primary: () => { hideCard(); state = 'play'; } });
+}
+
+function levelComplete() {
+  state = 'quiz';
+  SFX.play('clear');
+  const q = QUIZ[levelIdx + 1];
+  const next = () => { hideCard(); levelIdx + 1 < LEVELS.length ? startLevel(levelIdx + 1) : showEnd(); };
+  const head = `<p class="eyebrow">Quiz gate · ${esc(L.name)}</p>`;
+  if (!q || !q.question) {
+    showCard(`${head}<h2>Layer complete!</h2>
+      <p>You found ${notesGot[levelIdx]} of 3 field notes.</p>
+      <p class="placeholder">The quiz question for this layer hasn't been written yet.</p>
+      <div class="row"><button class="btn" data-act="primary">NEXT LAYER</button></div>`, { primary: next });
+    return;
+  }
+  const choices = q.choices.map((c, i) => `<button class="choice" data-act="pick" data-i="${i}">${esc(c)}</button>`).join('');
+  const fromNote = FIELD_NOTES[levelIdx + 1][q.note].title;
+  showCard(`${head}<h2>${esc(q.question)}</h2><p class="src">From your field note: ${esc(fromNote)}</p><div class="choices">${choices}</div><p class="msg" id="qmsg" aria-live="polite"></p><div class="row"><button class="btn ghost" data-act="book">NOTEBOOK</button></div>`, {
+    book: () => openNotebook(),
+    pick: b => {
+      const i = +b.dataset.i, msg = overlay.querySelector('#qmsg');
+      if (i === q.answer) {
+        b.classList.add('right'); msg.textContent = 'Correct!'; SFX.play('right');
+        overlay.querySelectorAll('.choice').forEach(c => c.disabled = true);
+        setTimeout(next, 900);
+      } else { SFX.play('wrong'); b.classList.add('wrong'); b.disabled = true; msg.textContent = `Not quite. Reread "${fromNote}" in your notebook and try again.`; }
+    },
+  });
+}
+
+function showEnd(beatBoss) {
+  state = 'end';
+  SFX.music('end');
+  updateLevelButtons();
+  const total = notesGot.reduce((a, b) => a + b, 0);
+  showCard(`
+    <p class="eyebrow">${beatBoss ? 'You eroded the Strata Golem' : 'You reached the rim'}</p>
+    <h2>Zion Canyon, today</h2>
+    <p>Every layer you climbed is now exposed in the canyon walls, cut open by running water.</p>
+    <p>${esc(FUN_FACTS)}</p>
+    <dl class="facts"><dt>Field notes</dt><dd>${total} of ${LAYERS * 3}</dd><dt>Falls</dt><dd>${deaths}</dd></dl>
+    <div class="row"><button class="btn" data-act="primary">VIEW CROSS-SECTION</button><button class="btn ghost" data-act="again">PLAY AGAIN</button></div>`,
+    { primary: () => { overlay.hidden = true; }, again: () => { deaths = 0; lives = START_LIVES; crystals = 0; startLevel(0); } });
+}
+
+function gameOver() {
+  state = 'gameover';
+  SFX.music(null);
+  showCard(`
+    <p class="eyebrow">Out of lives</p>
+    <h2>Game over</h2>
+    <p>Try ${esc(L.name)} again with ${START_LIVES} lives. Collect ${CRYSTALS_PER_LIFE} crystals or find hidden canteens for extra lives.</p>
+    <div class="row"><button class="btn" data-act="primary">TRY AGAIN</button></div>`,
+    { primary: () => { lives = START_LIVES; crystals = 0; startLevel(levelIdx); } });
+}
+
+let nbReturn = null, nbLevel = 0;
+function openNotebook(level = Math.min(levelIdx, LAYERS - 1)) {
+  if (state === 'notebook') return;
+  nbReturn = state === 'play' ? 'play' : state;
+  state = 'notebook';
+  renderNotebook(level);
+}
+function renderNotebook(level) {
+  nbLevel = level;
+  const found = journal.flat().filter(Boolean).length;
+  const tabs = LEVELS.slice(0, LAYERS).map((lv, i) => `<button class="lvl" data-act="tab" data-i="${i}" aria-current="${i === level}" aria-label="Level ${i + 1}: ${esc(lv.name)}">${i + 1}</button>`).join('');
+  const lv = LEVELS[level];
+  const items = FIELD_NOTES[level + 1].map((n, i) => journal[level][i]
+    ? `<div class="nb-note"><h3>${i + 1}. ${esc(n.title)}</h3><p>${esc(n.text)}</p>${n.src ? `<p class="src">Source: ${esc(SRC[n.src])}</p>` : ''}</div>`
+    : `<div class="nb-note missing"><h3>${i + 1}. ???</h3><p>Not found yet. Look for it in ${esc(lv.name)}.</p></div>`).join('');
+  showCard(`
+    <p class="eyebrow">Field notebook · ${found} of ${LAYERS * 3} found</p>
+    <div class="nb-tabs">${tabs}</div>
+    <h2>${esc(lv.name)}</h2>
+    <p class="src">${esc(lv.formation)} · ${esc(lv.age)}</p>
+    ${items}
+    <div class="row"><button class="btn" data-act="primary">CLOSE</button></div>`,
+    { tab: b => renderNotebook(+b.dataset.i), primary: closeNotebook }, false);
+}
+function closeNotebook() {
+  const back = nbReturn; nbReturn = null;
+  if (back === 'play') { hideCard(); state = 'play'; return; }
+  state = back || 'title';
+  if (back === 'end' && lastCard) { overlay.hidden = true; return; }
+  if (lastCard) showCard(lastCard.html, lastCard.handlers, false); else hideCard();
+}
+
+function togglePause() {
+  if (state === 'play') {
+    state = 'paused';
+    showCard(`<p class="eyebrow">Paused</p><h2>${esc(L.name)}</h2>
+      <div class="row"><button class="btn" data-act="primary">RESUME</button><button class="btn ghost" data-act="book">NOTEBOOK</button><button class="btn ghost" data-act="restart">RESTART LEVEL</button></div>
+      <p class="src">Jump to a level</p>
+      <div class="nb-tabs">${LEVELS.map((lv, i) => `<button class="lvl" data-act="lvl" data-i="${i}" aria-label="Level ${i + 1}: ${esc(lv.name)}">${lv.boss ? 'B' : i + 1}</button>`).join('')}</div>`,
+      { primary: () => { hideCard(); state = 'play'; }, book: () => openNotebook(), restart: () => startLevel(levelIdx), lvl: b => startLevel(+b.dataset.i) });
+  } else if (state === 'paused') { hideCard(); state = 'play'; }
+}
+
+// ---------- input ----------
+const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyX: 'hammer', KeyJ: 'hammer', KeyK: 'hammer', ArrowDown: 'down', KeyS: 'down' };
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyN' && (state === 'play' || state === 'paused' || state === 'notebook' || state === 'quiz')) {
+    e.preventDefault();
+    if (state === 'notebook') closeNotebook(); else openNotebook();
+    return;
+  }
+  if (e.code === 'Escape' && state === 'notebook') { e.preventDefault(); closeNotebook(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { if (state === 'play' || state === 'paused') { togglePause(); e.preventDefault(); } return; }
+  if (!overlay.hidden) {
+    if (e.code === 'Enter' && primary && !(document.activeElement instanceof HTMLButtonElement)) { e.preventDefault(); primary(); }
+    return;
+  }
+  const k = KEYMAP[e.code];
+  if (!k || state !== 'play') return;
+  e.preventDefault();
+  if (!keys[k]) { if (k === 'jump') input.jumpPressed = true; if (k === 'hammer') input.hammerPressed = true; if (k === 'down') input.downPressed = true; }
+  keys[k] = true;
+});
+window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+document.querySelectorAll('.touch button').forEach(b => {
+  const k = b.dataset.key;
+  const down = e => { e.preventDefault(); if (!keys[k]) { if (k === 'jump') input.jumpPressed = true; if (k === 'hammer') input.hammerPressed = true; } keys[k] = true; b.classList.add('on'); };
+  const up = e => { e.preventDefault(); keys[k] = false; b.classList.remove('on'); };
+  b.addEventListener('pointerdown', down);
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
+});
+
+const lvlWrap = document.getElementById('levels');
+LEVELS.forEach((lv, i) => {
+  const b = document.createElement('button');
+  b.className = 'lvl'; b.type = 'button'; b.textContent = lv.boss ? 'B' : i + 1; b.title = lv.name;
+  b.setAttribute('aria-label', `Level ${i + 1}: ${lv.name}`);
+  b.addEventListener('click', () => startLevel(i));
+  lvlWrap.appendChild(b);
+});
+function updateLevelButtons() {
+  lvlWrap.querySelectorAll('.lvl').forEach((b, i) => b.setAttribute('aria-current', String(i === levelIdx && state !== 'title' && state !== 'end')));
+}
+document.getElementById('restart').addEventListener('click', () => startLevel(levelIdx));
+document.getElementById('notebook').addEventListener('click', () => { if (state === 'notebook') closeNotebook(); else openNotebook(); });
+const soundBtn = document.getElementById('sound'), soundTouch = document.getElementById('snd-touch');
+const musicBtn = document.getElementById('music');
+musicBtn.addEventListener('click', () => { SFX.init(); SFX.toggleMusic(); updateSoundLabels(); });
+function updateSoundLabels() { musicBtn.textContent = SFX.musicOff ? 'MUSIC OFF' : 'MUSIC ON'; soundBtn.textContent = SFX.muted ? 'SOUND OFF' : 'SOUND ON'; soundTouch.textContent = SFX.muted ? 'MUTE' : 'SND'; }
+function toggleSound() { SFX.init(); SFX.toggle(); updateSoundLabels(); }
+soundBtn.addEventListener('click', toggleSound);
+updateSoundLabels();
+window.addEventListener('pointerdown', () => SFX.init(), true);
+window.addEventListener('keydown', e => { SFX.init(); if (e.code === 'KeyM') toggleSound(); }, true);
+document.querySelectorAll('.touch-top button').forEach(b => b.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const cmd = b.dataset.cmd;
+  if (cmd === 'sound') toggleSound();
+  if (cmd === 'notebook') { if (state === 'notebook') closeNotebook(); else if (state === 'play' || state === 'paused') openNotebook(); }
+  if (cmd === 'pause' && (state === 'play' || state === 'paused')) togglePause();
+}));
+
+// ---------- loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  time += dt;
+  if (state === 'play') { update(dt / 2); if (state === 'play') update(dt / 2); }
+  render();
+  requestAnimationFrame(frame);
+}
+
+window.claude?.hot?.snapshot?.(() => ({ level: levelIdx, state }));
+function start(data) {
+  if (data && typeof data.level === 'number' && data.state && data.state !== 'title') startLevel(clamp(data.level, 0, LEVELS.length - 1));
+  else { buildLevel(0); showTitle(); }
+  updateLevelButtons();
+  requestAnimationFrame(frame);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
