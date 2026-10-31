@@ -1,3 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A retro platformer about how Zion National Park's rock layers formed. A Geology 101 project.">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px system-ui, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
 <title>Layers of Zion</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -95,6 +107,8 @@ kbd { font: 400 9px var(--pixel); background: #2a1d18; border: 2px solid var(--d
 }
 </style>
 
+</head>
+<body>
 <div class="wrap">
   <header>
     <h1>Layers of <span>Zion</span></h1>
@@ -2267,3 +2281,6 @@ function start(data) {
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
+
+</body>
+</html>
